@@ -216,6 +216,24 @@ textarea{resize:vertical;}
 
   <!-- ===== EDITOR TAB ===== -->
   <section id="tab-editor" class="hidden pastor-only">
+    <div class="card" id="bibleAiCard">
+      <div class="section-title">Bible AI <span class="badge">Gemini</span></div>
+      <label class="f">Give a topic to generate a full Daily Word, or ask any Bible question</label>
+      <textarea id="aiPrompt" rows="3" placeholder="e.g. 'healing' or 'forgiveness' to generate a Daily Word - or ask: 'Explain John 3:16' / 'Typology of the bronze serpent' / 'Cross references for Romans 8:28' / 'What does the parable of the sower mean?'"></textarea>
+      <div class="btnRow">
+        <button class="save" onclick="generateDailyWordAI()">Generate Daily Word</button>
+        <button onclick="askBibleAI()" style="flex:1;min-width:120px;padding:12px;border-radius:10px;border:none;font-weight:700;font-size:14px;background:var(--blue2);color:#fff;">Ask / Research</button>
+      </div>
+      <div class="hint" id="aiStatus">Covers Q&amp;A, verses, passages, typology, references and Bible research - instant feedback in this panel.</div>
+      <div id="aiResultWrap" class="hidden" style="margin-top:10px;">
+        <div class="wcBlock"><div class="label">Bible AI Result</div><div class="val" id="aiResultBox" style="white-space:pre-wrap;"></div></div>
+        <div class="btnRow">
+          <button onclick="copyAiResult()">Copy Result</button>
+          <button onclick="insertAiResultIntoDailyWords()">Insert into My Daily Words</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="section-title">Paste &amp; Auto-Fill</div>
       <label class="f">Paste text (Ctrl+V) from Word/Docx/WhatsApp</label>
@@ -305,6 +323,14 @@ textarea{resize:vertical;}
       <label class="f">API.Bible Key (optional)</label>
       <input type="text" id="s_apiKey" placeholder="Paste your api.bible key">
       <div class="btnRow"><button class="save" onclick="saveBibleSettings()">Save Bible Settings</button></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Bible AI (Gemini)</div>
+      <label class="f">Gemini API Key</label>
+      <input type="text" id="s_geminiKey" placeholder="Paste your Gemini API key">
+      <div class="hint">Get a free key at aistudio.google.com/apikey. Used only on this device to call Gemini directly - it is never sent anywhere else. Model: gemini-3.1-flash-lite.</div>
+      <div class="btnRow"><button class="save" onclick="saveGeminiSettings()">Save Gemini Key</button></div>
     </div>
 
     <div class="card">
@@ -398,7 +424,8 @@ var settings = {
   apiKey: '',
   syncEnabled: false,
   lastSynced: null,
-  databaseURL: ''
+  databaseURL: '',
+  geminiApiKey: ''
 };
 var currentEditId = null;
 var todayIndex = 0; // index into sorted display list for Today tab navigation
@@ -542,6 +569,7 @@ function renderSettingsUI(){
   document.getElementById('s_defaultVersion').value = settings.defaultVersion;
   document.getElementById('s_apiKey').value = settings.apiKey;
   document.getElementById('s_databaseURL').value = settings.databaseURL;
+  document.getElementById('s_geminiKey').value = settings.geminiApiKey;
   document.getElementById('storageCount').textContent = messages.length + ' messages stored on this device';
   document.getElementById('lastSyncedLabel').textContent = settings.lastSynced ? new Date(settings.lastSynced).toLocaleString() : 'Never';
   var t = document.getElementById('syncToggle');
@@ -561,6 +589,11 @@ function saveBibleSettings(){
   settings.apiKey = document.getElementById('s_apiKey').value;
   saveSettingsToStorage();
   alert('Bible settings saved.');
+}
+function saveGeminiSettings(){
+  settings.geminiApiKey = document.getElementById('s_geminiKey').value.trim();
+  saveSettingsToStorage();
+  alert('Gemini API key saved.');
 }
 function saveDatabaseUrl(){
   settings.databaseURL = document.getElementById('s_databaseURL').value.trim();
@@ -885,6 +918,110 @@ function clearAllMessages(){
   messages = [];
   saveMessagesToStorage();
   renderToday(); renderList(); renderSettingsUI();
+}
+
+/* ---------------- BIBLE AI (Gemini) ---------------- */
+var GEMINI_MODEL = 'gemini-3.1-flash-lite';
+
+function callGemini(promptText, systemText){
+  var apiKey = settings.geminiApiKey;
+  if(!apiKey){
+    return Promise.reject({message:'Add your Gemini API key in Settings first (Bible AI section).'});
+  }
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent?key='+encodeURIComponent(apiKey);
+  var body = { contents: [{ role:'user', parts:[{ text: promptText }] }] };
+  if(systemText){ body.systemInstruction = { role:'system', parts:[{ text: systemText }] }; }
+  return fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).catch(function(){
+    throw { message: 'Could not reach Gemini - check your internet connection.' };
+  }).then(function(res){
+    if(!res.ok){
+      return res.text().then(function(t){
+        throw { message: 'Gemini error ('+res.status+'). Check your API key and internet connection.' , raw:t };
+      });
+    }
+    return res.json();
+  }).then(function(data){
+    var text = '';
+    try{
+      var cands = data.candidates || [];
+      if(cands[0] && cands[0].content && cands[0].content.parts){
+        for(var i=0;i<cands[0].content.parts.length;i++){
+          text += cands[0].content.parts[i].text || '';
+        }
+      }
+    }catch(e){}
+    if(!text){ throw { message:'No response text returned from Gemini. Try rephrasing.' }; }
+    return text;
+  });
+}
+
+function setAiStatus(msg){
+  var el = document.getElementById('aiStatus');
+  if(el) el.textContent = msg;
+}
+
+function generateDailyWordAI(){
+  var topic = document.getElementById('aiPrompt').value.trim();
+  if(!topic){ alert('Type a topic or focus first, e.g. "healing" or "faith in trials".'); return; }
+  document.getElementById('aiResultWrap').classList.add('hidden');
+  setAiStatus('Generating Daily Word...');
+  var sys = "You are a devotional writing assistant for a Christian ministry app called 'My Daily Words - Speak the Word'. Given a short topic or focus from the pastor, write one complete daily devotional in the same declarative, faith-confession style as: 'In Christ, Iam a King and thus who Iam...'. Respond with ONLY valid JSON, no markdown fences, no commentary, using exactly these keys: focus, scriptureRef, version, scriptureText, personalised, dailyWords, prayerPoint, speakWords, callForth, grace, whatDoISee, thankGod. version must be one of: KJV, NKJV, NIV, NLT, AMPLIFIED, ERV, ESV, CHINYANJA. scriptureText must be the actual text of that reference in that version. personalised rewrites the verse using first-person I/me/my. dailyWords is 4-7 sentences, first person, faith-affirming, may cite supporting references in parentheses. prayerPoint, speakWords, callForth, grace, whatDoISee, thankGod are each one short first-person sentence.";
+  callGemini('Topic/Focus: ' + topic, sys).then(function(text){
+    var cleaned = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    var obj;
+    try{ obj = JSON.parse(cleaned); }
+    catch(e){ setAiStatus('Could not read the AI response as structured data. Try again or rephrase the topic.'); return; }
+    fillEditorFromAiObject(obj);
+    setAiStatus('Daily Word generated below - review, then Save Message.');
+  }).catch(function(err){
+    setAiStatus((err && err.message) ? err.message : 'Gemini request failed.');
+  });
+}
+
+function fillEditorFromAiObject(obj){
+  if(obj.focus) document.getElementById('f_focus').value = obj.focus;
+  if(obj.scriptureRef) document.getElementById('f_scriptureRef').value = obj.scriptureRef;
+  if(obj.version && BIBLE_VERSIONS.indexOf(String(obj.version).toUpperCase())>-1){ document.getElementById('f_version').value = String(obj.version).toUpperCase(); }
+  if(obj.scriptureText) document.getElementById('f_scriptureText').value = obj.scriptureText;
+  if(obj.personalised) document.getElementById('f_personalised').value = obj.personalised;
+  if(obj.dailyWords) document.getElementById('f_dailyWords').value = obj.dailyWords;
+  if(obj.prayerPoint) document.getElementById('f_prayerPoint').value = obj.prayerPoint;
+  if(obj.speakWords) document.getElementById('f_speakWords').value = obj.speakWords;
+  if(obj.callForth) document.getElementById('f_callForth').value = obj.callForth;
+  if(obj.grace) document.getElementById('f_grace').value = obj.grace;
+  if(obj.whatDoISee) document.getElementById('f_whatDoISee').value = obj.whatDoISee;
+  if(obj.thankGod) document.getElementById('f_thankGod').value = obj.thankGod;
+}
+
+function askBibleAI(){
+  var q = document.getElementById('aiPrompt').value.trim();
+  if(!q){ alert('Type a Bible question, verse, or topic to research first.'); return; }
+  setAiStatus('Researching...');
+  document.getElementById('aiResultWrap').classList.add('hidden');
+  var sys = "You are a Bible research assistant for a pastor's personal study inside an app called My Daily Words. Answer thoroughly and accurately: give relevant Bible verses (reference plus a short quote), related passages, typology or symbolism where relevant, cross references, brief historical/contextual background, and a clear explanation. Use short plain-text headings (no markdown symbols), keep it well organized and readable on a phone screen.";
+  callGemini(q, sys).then(function(text){
+    document.getElementById('aiResultBox').textContent = text;
+    document.getElementById('aiResultWrap').classList.remove('hidden');
+    setAiStatus('Done.');
+  }).catch(function(err){
+    setAiStatus((err && err.message) ? err.message : 'Gemini request failed.');
+  });
+}
+
+function copyAiResult(){
+  var t = document.getElementById('aiResultBox').textContent;
+  if(t) copyToClipboard(t);
+}
+function insertAiResultIntoDailyWords(){
+  var addition = document.getElementById('aiResultBox').textContent;
+  if(!addition) return;
+  var cur = document.getElementById('f_dailyWords').value;
+  document.getElementById('f_dailyWords').value = cur ? (cur + '\n\n' + addition) : addition;
+  alert('Inserted into "My Daily Words" field below.');
 }
 
 /* ---------------- PASTE AUTO-FILL ---------------- */
