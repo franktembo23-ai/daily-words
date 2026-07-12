@@ -68,7 +68,7 @@ nav.tabs button{flex:1;min-width:80px;background:transparent;border:none;color:#
 nav.tabs button.active{color:#fff;border-bottom:3px solid var(--gold);background:rgba(255,255,255,0.06);}
 
 main{max-width:760px;margin:0 auto;padding:14px 12px 60px;}
-.syncPill{position:fixed;bottom:10px;right:10px;background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,0.18);display:flex;align-items:center;gap:6px;z-index:40;}
+.syncPill{position:fixed;bottom:10px;right:10px;background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,0.18);display:flex;align-items:center;gap:6px;z-index:40;cursor:pointer;}
 .syncDot{width:8px;height:8px;border-radius:50%;background:#bbb;}
 .syncDot.on{background:var(--good);}
 .syncDot.off{background:var(--danger);}
@@ -324,12 +324,20 @@ textarea{resize:vertical;}
           <button class="toggle" id="syncToggle" onclick="toggleSync()"><span class="knob"></span></button>
         </div>
         <div class="row">
+          <div><div class="lab">Sync Status</div><div class="sub" id="syncStatusLabel">Local only</div></div>
+          <button style="background:#eef2fb;color:var(--blue2);border:1px solid #d7e0f5;padding:6px 10px;border-radius:8px;font-size:11px;" onclick="retrySync()">Retry</button>
+        </div>
+        <div class="row">
           <div><div class="lab">Messages Stored</div><div class="sub" id="storageCount">0 messages</div></div>
         </div>
         <div class="row">
           <div><div class="lab">Last Synced</div><div class="sub" id="lastSyncedLabel">Never</div></div>
         </div>
       </div>
+      <label class="f">Realtime Database URL (only fill in if sync gets stuck on "Syncing...")</label>
+      <input type="text" id="s_databaseURL" placeholder="https://my-daily-words-9060a-default-rtdb.firebaseio.com">
+      <div class="hint">Find this at the top of Firebase Console &rarr; Build &rarr; Realtime Database. Leave blank to use the default.</div>
+      <div class="btnRow"><button class="save" onclick="saveDatabaseUrl()">Save Database URL</button></div>
       <div class="btnRow">
         <button class="save" style="background:var(--blue2)" onclick="exportAll()">Export All (Backup)</button>
         <button class="clear" onclick="document.getElementById('importFile2').click()">Import Backup</button>
@@ -350,7 +358,7 @@ textarea{resize:vertical;}
 
 </main>
 
-<div class="syncPill pastor-only"><span class="syncDot" id="syncDot"></span><span id="syncLabel">Local only</span></div>
+<div class="syncPill pastor-only" id="syncPill" onclick="retrySync()" title="Tap to retry sync"><span class="syncDot" id="syncDot"></span><span id="syncLabel">Local only</span></div>
 
 <!-- Hidden print area -->
 <div id="printArea" style="display:none;"></div>
@@ -389,7 +397,8 @@ var settings = {
   defaultVersion: 'KJV',
   apiKey: '',
   syncEnabled: false,
-  lastSynced: null
+  lastSynced: null,
+  databaseURL: ''
 };
 var currentEditId = null;
 var todayIndex = 0; // index into sorted display list for Today tab navigation
@@ -532,6 +541,7 @@ function renderSettingsUI(){
   document.getElementById('s_telegram').value = settings.telegram;
   document.getElementById('s_defaultVersion').value = settings.defaultVersion;
   document.getElementById('s_apiKey').value = settings.apiKey;
+  document.getElementById('s_databaseURL').value = settings.databaseURL;
   document.getElementById('storageCount').textContent = messages.length + ' messages stored on this device';
   document.getElementById('lastSyncedLabel').textContent = settings.lastSynced ? new Date(settings.lastSynced).toLocaleString() : 'Never';
   var t = document.getElementById('syncToggle');
@@ -552,6 +562,16 @@ function saveBibleSettings(){
   saveSettingsToStorage();
   alert('Bible settings saved.');
 }
+function saveDatabaseUrl(){
+  settings.databaseURL = document.getElementById('s_databaseURL').value.trim();
+  saveSettingsToStorage();
+  // force a clean reconnect with the new URL
+  try{ if(fbApp && fbApp.delete){ fbApp.delete(); } }catch(e){}
+  fbApp = null; fbDb = null; fbReady = false;
+  clearSyncTimeout();
+  alert('Database URL saved.');
+  if(settings.syncEnabled){ initFirebase(); }
+}
 function changePin(){
   var oldPin = document.getElementById('s_pinOld').value;
   var newPin = document.getElementById('s_pinNew').value;
@@ -566,7 +586,7 @@ function toggleSync(){
   settings.syncEnabled = !settings.syncEnabled;
   saveSettingsToStorage();
   renderSettingsUI();
-  if(settings.syncEnabled){ initFirebase(); } else { setSyncStatus(false,'Local only'); }
+  if(settings.syncEnabled){ initFirebase(); } else { clearSyncTimeout(); setSyncStatus(false,'Local only'); }
 }
 
 function populateVersionSelects(){
@@ -585,21 +605,40 @@ function populateVersionSelects(){
 }
 
 /* ---------------- FIREBASE SYNC ---------------- */
+var syncTimeoutHandle = null;
+function clearSyncTimeout(){
+  if(syncTimeoutHandle){ clearTimeout(syncTimeoutHandle); syncTimeoutHandle=null; }
+}
 function initFirebase(){
   try{
-    if(!fbApp){ fbApp = firebase.initializeApp(firebaseConfig); }
+    if(!fbApp){
+      var cfg = {};
+      for(var k in firebaseConfig){ cfg[k] = firebaseConfig[k]; }
+      if(settings.databaseURL){ cfg.databaseURL = settings.databaseURL; }
+      fbApp = firebase.initializeApp(cfg);
+    }
+    fbReady = false;
     setSyncStatus(true,'Signing in...');
+    clearSyncTimeout();
+    syncTimeoutHandle = setTimeout(function(){
+      setSyncStatus(false,'Sync timed out - tap to retry');
+    }, 15000);
     firebase.auth().onAuthStateChanged(function(user){
-      if(user){
-        startDatabaseSync();
-      }
+      if(user){ startDatabaseSync(); }
     });
     firebase.auth().signInAnonymously().catch(function(err){
       fbReady = false;
-      setSyncStatus(false,'Auth failed');
+      clearSyncTimeout();
+      if(err && err.code === 'auth/operation-not-allowed'){
+        setSyncStatus(false,'Enable Anonymous sign-in in Firebase - tap to retry');
+      } else if(err && err.code === 'auth/network-request-failed'){
+        setSyncStatus(false,'No internet connection - tap to retry');
+      } else {
+        setSyncStatus(false,'Auth failed - tap to retry');
+      }
     });
   }catch(e){
-    setSyncStatus(false,'Sync unavailable');
+    setSyncStatus(false,'Sync unavailable - tap to retry');
   }
 }
 function startDatabaseSync(){
@@ -609,6 +648,7 @@ function startDatabaseSync(){
   setSyncStatus(true,'Syncing...');
   var ref = fbDb.ref('myDailyWords/messages');
   ref.on('value', function(snap){
+    clearSyncTimeout();
     var remote = snap.val() || {};
     mergeRemoteMessages(remote);
     settings.lastSynced = Date.now();
@@ -616,13 +656,26 @@ function startDatabaseSync(){
     setSyncStatus(true,'Synced');
     renderSettingsUI();
   }, function(err){
-    setSyncStatus(false,'Sync error');
+    clearSyncTimeout();
+    fbReady = false;
+    if(err && err.code === 'PERMISSION_DENIED'){
+      setSyncStatus(false,'Permission denied - check rules');
+    } else {
+      setSyncStatus(false,'Sync error - tap to retry');
+    }
   });
+}
+function retrySync(){
+  if(!settings.syncEnabled) return;
+  fbReady = false;
+  initFirebase();
 }
 function setSyncStatus(on,label){
   var dot = document.getElementById('syncDot');
   dot.className = 'syncDot ' + (on ? 'on':'off');
   document.getElementById('syncLabel').textContent = label;
+  var s = document.getElementById('syncStatusLabel');
+  if(s) s.textContent = label;
 }
 function mergeRemoteMessages(remoteObj){
   var changed = false;
