@@ -68,7 +68,7 @@ nav.tabs button{flex:1;min-width:80px;background:transparent;border:none;color:#
 nav.tabs button.active{color:#fff;border-bottom:3px solid var(--gold);background:rgba(255,255,255,0.06);}
 
 main{max-width:760px;margin:0 auto;padding:14px 12px 60px;}
-.syncPill{position:fixed;bottom:10px;right:10px;background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,0.18);display:flex;align-items:center;gap:6px;z-index:40;cursor:pointer;}
+.syncPill{position:fixed;bottom:10px;right:10px;background:#fff;border-radius:20px;padding:6px 12px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,0.18);display:flex;align-items:center;gap:6px;z-index:40;}
 .syncDot{width:8px;height:8px;border-radius:50%;background:#bbb;}
 .syncDot.on{background:var(--good);}
 .syncDot.off{background:var(--danger);}
@@ -216,24 +216,6 @@ textarea{resize:vertical;}
 
   <!-- ===== EDITOR TAB ===== -->
   <section id="tab-editor" class="hidden pastor-only">
-    <div class="card" id="bibleAiCard">
-      <div class="section-title">Bible AI <span class="badge">Gemini</span></div>
-      <label class="f">Give a topic to generate a full Daily Word, or ask any Bible question</label>
-      <textarea id="aiPrompt" rows="3" placeholder="e.g. 'healing' or 'forgiveness' to generate a Daily Word - or ask: 'Explain John 3:16' / 'Typology of the bronze serpent' / 'Cross references for Romans 8:28' / 'What does the parable of the sower mean?'"></textarea>
-      <div class="btnRow">
-        <button class="save" onclick="generateDailyWordAI()">Generate Daily Word</button>
-        <button onclick="askBibleAI()" style="flex:1;min-width:120px;padding:12px;border-radius:10px;border:none;font-weight:700;font-size:14px;background:var(--blue2);color:#fff;">Ask / Research</button>
-      </div>
-      <div class="hint" id="aiStatus">Covers Q&amp;A, verses, passages, typology, references and Bible research - instant feedback in this panel.</div>
-      <div id="aiResultWrap" class="hidden" style="margin-top:10px;">
-        <div class="wcBlock"><div class="label">Bible AI Result</div><div class="val" id="aiResultBox" style="white-space:pre-wrap;"></div></div>
-        <div class="btnRow">
-          <button onclick="copyAiResult()">Copy Result</button>
-          <button onclick="insertAiResultIntoDailyWords()">Insert into My Daily Words</button>
-        </div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="section-title">Paste &amp; Auto-Fill</div>
       <label class="f">Paste text (Ctrl+V) from Word/Docx/WhatsApp</label>
@@ -326,14 +308,6 @@ textarea{resize:vertical;}
     </div>
 
     <div class="card">
-      <div class="section-title">Bible AI (Gemini)</div>
-      <label class="f">Gemini API Key</label>
-      <input type="text" id="s_geminiKey" placeholder="Paste your Gemini API key">
-      <div class="hint">Get a free key at aistudio.google.com/apikey. Used only on this device to call Gemini directly - it is never sent anywhere else. Model: gemini-3.1-flash-lite.</div>
-      <div class="btnRow"><button class="save" onclick="saveGeminiSettings()">Save Gemini Key</button></div>
-    </div>
-
-    <div class="card">
       <div class="section-title">Pastor Access PIN</div>
       <label class="f">Current PIN</label>
       <input type="password" id="s_pinOld">
@@ -350,20 +324,12 @@ textarea{resize:vertical;}
           <button class="toggle" id="syncToggle" onclick="toggleSync()"><span class="knob"></span></button>
         </div>
         <div class="row">
-          <div><div class="lab">Sync Status</div><div class="sub" id="syncStatusLabel">Local only</div></div>
-          <button style="background:#eef2fb;color:var(--blue2);border:1px solid #d7e0f5;padding:6px 10px;border-radius:8px;font-size:11px;" onclick="retrySync()">Retry</button>
-        </div>
-        <div class="row">
           <div><div class="lab">Messages Stored</div><div class="sub" id="storageCount">0 messages</div></div>
         </div>
         <div class="row">
           <div><div class="lab">Last Synced</div><div class="sub" id="lastSyncedLabel">Never</div></div>
         </div>
       </div>
-      <label class="f">Realtime Database URL (only fill in if sync gets stuck on "Syncing...")</label>
-      <input type="text" id="s_databaseURL" placeholder="https://my-daily-words-9060a-default-rtdb.firebaseio.com">
-      <div class="hint">Find this at the top of Firebase Console &rarr; Build &rarr; Realtime Database. Leave blank to use the default.</div>
-      <div class="btnRow"><button class="save" onclick="saveDatabaseUrl()">Save Database URL</button></div>
       <div class="btnRow">
         <button class="save" style="background:var(--blue2)" onclick="exportAll()">Export All (Backup)</button>
         <button class="clear" onclick="document.getElementById('importFile2').click()">Import Backup</button>
@@ -384,7 +350,7 @@ textarea{resize:vertical;}
 
 </main>
 
-<div class="syncPill pastor-only" id="syncPill" onclick="retrySync()" title="Tap to retry sync"><span class="syncDot" id="syncDot"></span><span id="syncLabel">Local only</span></div>
+<div class="syncPill pastor-only"><span class="syncDot" id="syncDot"></span><span id="syncLabel">Local only</span></div>
 
 <!-- Hidden print area -->
 <div id="printArea" style="display:none;"></div>
@@ -423,9 +389,7 @@ var settings = {
   defaultVersion: 'KJV',
   apiKey: '',
   syncEnabled: false,
-  lastSynced: null,
-  databaseURL: '',
-  geminiApiKey: ''
+  lastSynced: null
 };
 var currentEditId = null;
 var todayIndex = 0; // index into sorted display list for Today tab navigation
@@ -568,8 +532,6 @@ function renderSettingsUI(){
   document.getElementById('s_telegram').value = settings.telegram;
   document.getElementById('s_defaultVersion').value = settings.defaultVersion;
   document.getElementById('s_apiKey').value = settings.apiKey;
-  document.getElementById('s_databaseURL').value = settings.databaseURL;
-  document.getElementById('s_geminiKey').value = settings.geminiApiKey;
   document.getElementById('storageCount').textContent = messages.length + ' messages stored on this device';
   document.getElementById('lastSyncedLabel').textContent = settings.lastSynced ? new Date(settings.lastSynced).toLocaleString() : 'Never';
   var t = document.getElementById('syncToggle');
@@ -590,21 +552,6 @@ function saveBibleSettings(){
   saveSettingsToStorage();
   alert('Bible settings saved.');
 }
-function saveGeminiSettings(){
-  settings.geminiApiKey = document.getElementById('s_geminiKey').value.trim();
-  saveSettingsToStorage();
-  alert('Gemini API key saved.');
-}
-function saveDatabaseUrl(){
-  settings.databaseURL = document.getElementById('s_databaseURL').value.trim();
-  saveSettingsToStorage();
-  // force a clean reconnect with the new URL
-  try{ if(fbApp && fbApp.delete){ fbApp.delete(); } }catch(e){}
-  fbApp = null; fbDb = null; fbReady = false;
-  clearSyncTimeout();
-  alert('Database URL saved.');
-  if(settings.syncEnabled){ initFirebase(); }
-}
 function changePin(){
   var oldPin = document.getElementById('s_pinOld').value;
   var newPin = document.getElementById('s_pinNew').value;
@@ -619,7 +566,7 @@ function toggleSync(){
   settings.syncEnabled = !settings.syncEnabled;
   saveSettingsToStorage();
   renderSettingsUI();
-  if(settings.syncEnabled){ initFirebase(); } else { clearSyncTimeout(); setSyncStatus(false,'Local only'); }
+  if(settings.syncEnabled){ initFirebase(); } else { setSyncStatus(false,'Local only'); }
 }
 
 function populateVersionSelects(){
@@ -638,40 +585,21 @@ function populateVersionSelects(){
 }
 
 /* ---------------- FIREBASE SYNC ---------------- */
-var syncTimeoutHandle = null;
-function clearSyncTimeout(){
-  if(syncTimeoutHandle){ clearTimeout(syncTimeoutHandle); syncTimeoutHandle=null; }
-}
 function initFirebase(){
   try{
-    if(!fbApp){
-      var cfg = {};
-      for(var k in firebaseConfig){ cfg[k] = firebaseConfig[k]; }
-      if(settings.databaseURL){ cfg.databaseURL = settings.databaseURL; }
-      fbApp = firebase.initializeApp(cfg);
-    }
-    fbReady = false;
+    if(!fbApp){ fbApp = firebase.initializeApp(firebaseConfig); }
     setSyncStatus(true,'Signing in...');
-    clearSyncTimeout();
-    syncTimeoutHandle = setTimeout(function(){
-      setSyncStatus(false,'Sync timed out - tap to retry');
-    }, 15000);
     firebase.auth().onAuthStateChanged(function(user){
-      if(user){ startDatabaseSync(); }
+      if(user){
+        startDatabaseSync();
+      }
     });
     firebase.auth().signInAnonymously().catch(function(err){
       fbReady = false;
-      clearSyncTimeout();
-      if(err && err.code === 'auth/operation-not-allowed'){
-        setSyncStatus(false,'Enable Anonymous sign-in in Firebase - tap to retry');
-      } else if(err && err.code === 'auth/network-request-failed'){
-        setSyncStatus(false,'No internet connection - tap to retry');
-      } else {
-        setSyncStatus(false,'Auth failed - tap to retry');
-      }
+      setSyncStatus(false,'Auth failed');
     });
   }catch(e){
-    setSyncStatus(false,'Sync unavailable - tap to retry');
+    setSyncStatus(false,'Sync unavailable');
   }
 }
 function startDatabaseSync(){
@@ -681,7 +609,6 @@ function startDatabaseSync(){
   setSyncStatus(true,'Syncing...');
   var ref = fbDb.ref('myDailyWords/messages');
   ref.on('value', function(snap){
-    clearSyncTimeout();
     var remote = snap.val() || {};
     mergeRemoteMessages(remote);
     settings.lastSynced = Date.now();
@@ -689,26 +616,13 @@ function startDatabaseSync(){
     setSyncStatus(true,'Synced');
     renderSettingsUI();
   }, function(err){
-    clearSyncTimeout();
-    fbReady = false;
-    if(err && err.code === 'PERMISSION_DENIED'){
-      setSyncStatus(false,'Permission denied - check rules');
-    } else {
-      setSyncStatus(false,'Sync error - tap to retry');
-    }
+    setSyncStatus(false,'Sync error');
   });
-}
-function retrySync(){
-  if(!settings.syncEnabled) return;
-  fbReady = false;
-  initFirebase();
 }
 function setSyncStatus(on,label){
   var dot = document.getElementById('syncDot');
   dot.className = 'syncDot ' + (on ? 'on':'off');
   document.getElementById('syncLabel').textContent = label;
-  var s = document.getElementById('syncStatusLabel');
-  if(s) s.textContent = label;
 }
 function mergeRemoteMessages(remoteObj){
   var changed = false;
@@ -753,63 +667,35 @@ function newId(){
 
 function seedIfEmpty(){
   if(messages.length>0) return;
-  var base = new Date();
+  var base = new Date(2027,0,1); // fixed start date: 1 January 2027
   var seed = [
-    {focus:"Iam A King",scriptureRef:"Revelation 5:10",version:"KJV",
-     scriptureText:"And has made us unto our God Kings and Priest, and we shall reign on the earth.",
-     personalised:"And has made me unto my God Kings and Priest, and I shall rule on the earth",
-     dailyWords:"In Christ, Iam a King and thus who Iam. I am in the kingdom of heaven and I have dominion. Iam an Eagle in the air as the King of the birds and Iam a lion in the land as the King of the beasts. I have eyes of an Eagle to see beyond in the realm of the spirit and I roar as a lion in the realm of prayer. I am bold as a king on the throne of God. I have wisdom more than the wisdom of Solomon because Iam greater than Solomon (Matthew 12:42). I rule on the earth, all things are under my feet (Psalm 8:6) and Iam in charge.",
-     prayerPoint:"Heavenly Father, lift me as a king and as a Priest in my life, in the name of Jesus.",
-     speakWords:"I Speak Kingship and Priesthood in my life.",
-     callForth:"I call forth Kingship and Priesthood to manifest in my life now!!!",
-     grace:"I have received the grace of Kingship and Priesthood in my life",
-     whatDoISee:"I see Kingship and Priesthood in my life.",
-     thankGod:"Father I thank you for making me a king and Priest in my generation"},
-    {focus:"Iam Above All",scriptureRef:"John 3:31",version:"NKJV",
-     scriptureText:"He who comes from above is above all; he who is of the earth is earthly and speaks of the earth. He who comes from heaven is above all.",
-     personalised:"",
-     dailyWords:"Jesus who is above all things lives in me (Galatians 2:20) and makes me to be above all things. Iam above all and all things are under my feet (Psalm 8:6) because I have set my mind on things of the above, the heavenly things (Colossians 3:2). I have all power from the day I received Christ (John 1:12), I received all power and I have the spirit of power (2Timothy 1:7). Greater is He that is in me (1 John 4:4) and I am more than a conqueror (Romans 8:37). I rejoice because I have overcome the world through Christ (John 16:33)",
-     prayerPoint:"Heavenly Father, lift me above all things in my life, in the name of Jesus.",
-     speakWords:"I speak grace to be above all things in my life.",
-     callForth:"I call forth grace of above all things to manifest in my life now!!!",
-     grace:"I have received the grace to be above all things.",
-     whatDoISee:"I see myself above all things in my generation",
-     thankGod:"Father I thank you for making me above all things."},
-    {focus:"My Faith Is Victory",scriptureRef:"1 John 5:4",version:"KJV",
-     scriptureText:"For whatever is born of God overcomes the world. And this is the victory that has overcome the world - our faith.",
-     personalised:"",
-     dailyWords:"My faith comes by hearing the word of God (Romans 10:17) and without faith I cannot please God (Hebrews 11:6). Through my faith in Christ, I believe that God exist (Hebrews 11:6). Iam born of God, the Spirit of God lives in me and my faith in Christ is victory and I have overcome the world through Christ. My faith is the victory that overcomes every situations in my life. No matter the situation, faith is the victory. My faith is strengthen each day by the word of God. Iam victorious in my life, in my marriage and ministry.",
-     prayerPoint:"Heavenly Father, I pray for victory in every area of my life, in the name of Jesus Christ.",
-     speakWords:"I speak victory over my life.",
-     callForth:"I call forth victory to manifest in my life now!!!",
-     grace:"I have received the grace of victory in my life.",
-     whatDoISee:"I see myself victorious in my generation",
-     thankGod:"Father I thank you for giving me victory in my life."},
-    {focus:"Defeated Satan",scriptureRef:"Colossians 2:15",version:"NLT",
-     scriptureText:"He defeated the rulers and powers of the spiritual world. With the cross he won the victory over them and led them away, as defeated and powerless prisoners for the whole world to see.",
-     personalised:"",
-     dailyWords:"The day I became born again, I already defeated Satan and the demons of darkness. When Jesus defeated Satan, I was in him. Now Iam seated with Christ in heavenly realms, far above all principalities and powers. Satan and his agents of darkness are under my feet Iam superior to them. As a Christian, Iam not a victim in the hand of Satan and his agents. The power of the devil is the ignorance of the believer. I enforce my rights and maintain what Christ has obtained for me. Iam greater and superior to Satan and his agents. Satan has no authority and power over me. I refuse him any chance to steal from me.",
-     prayerPoint:"Father, I pray for the Unstoppable Greatness in my life, in the name of Jesus.",
-     speakWords:"I speak Unstoppable Greatness in my life",
-     callForth:"I call forth Unstoppable Greatness to manifest in my life now!!!",
-     grace:"I have received the grace of Unstoppable Greatness in my life",
-     whatDoISee:"I see Unstoppable Greatness in my generation",
-     thankGod:"Father I thank you for making me Unstoppable Greatness"},
-    {focus:"My Identity Is In Christ",scriptureRef:"Colossians 3:3",version:"KJV",
-     scriptureText:"For you died, and your life is hidden with Christ in God.",
-     personalised:"",
-     dailyWords:"My identity as a Christian is in Christ and in Christ, I have been made a royal priesthood, a holy person, a righteous person, a sanctified, justified, forgiven and reconciled person. In Christ, the greater one (the Holy Spirit) lives inside me, and Iam also a partner of the divine nature. I cannot be condemned or be disadvantaged. I know who Iam in Christ. In Christ, I have discovered my identity.",
-     prayerPoint:"Father, open my mindset to understand all scriptures in my life, in the name of Jesus.",
-     speakWords:"I speak understanding of scriptures in my life.",
-     callForth:"I call forth understanding of scriptures in my life",
-     grace:"I have received the grace of understanding of scriptures in my life",
-     whatDoISee:"I see myself explaining scriptures in my generation",
-     thankGod:"Father, I thank you for making me understand all scriptures in my life"},
-    {focus:"My Born Again Spirit",scriptureRef:"John 3:6",version:"KJV",
-     scriptureText:"",
-     personalised:"",
-     dailyWords:"My spirit was created in righteousness and true holiness when I was born again (Eph. 4:24). Then, the Holy Spirit sealed this purity into my brand-new spirit (Eph. 1:13). Any sin I commit now in my physical actions cannot penetrate or contaminate my spirit because it's been sanctified and perfected forever (Heb. 10:10,14; 12:23). My born-again spirit cannot sin (1 John 3:9)! I have received eternal redemption (Heb. 9:12). This doesn't encourage me to live in sin but instead gives me stability in my life and relationship with God.",
-     prayerPoint:"",speakWords:"",callForth:"",grace:"",whatDoISee:"",thankGod:""}
+    {focus:"Iam A King",scriptureRef:"Revelation 5:10",version:"KJV",scriptureText:"And has made us unto our God Kings and Priest, and we shall reign on the earth.",personalised:"And has made me unto my God Kings and Priest, and I shall rule on the earth",dailyWords:"In Christ, Iam a King and thus who Iam. I am in the kingdom of heaven and I have dominion. Iam an Eagle in the air as the King of the birds and Iam a lion in the land as the King of the beasts. I have eyes of an Eagle to see beyond in the realm of the spirit and I roar as a lion in the realm of prayer. I am bold as a king on the throne of God. I have wisdom more than the wisdom of Solomon because Iam greater than Solomon (Matthew 12:42). I rule on the earth, all things are under my feet (Psalm 8:6) and Iam in charge.",prayerPoint:"Heavenly Father, lift me as a king and as a Priest in my life, in the name of Jesus.",speakWords:"I Speak Kingship and Priesthood in my life.",callForth:"I call forth Kingship and Priesthood to manifest in my life now!!!",grace:"I have received the grace of Kingship and Priesthood in my life",whatDoISee:"I see Kingship and Priesthood in my life.",thankGod:"Father I thank you for making me a king and Priest in my generation"},
+    {focus:"Iam Above All",scriptureRef:"John 3:31",version:"NKJV",scriptureText:"He who comes from above is above all; he who is of the earth is earthly and speaks of the earth. He who comes from heaven is above all.",personalised:"",dailyWords:"Jesus who is above all things lives in me (Galatians 2:20) and makes me to be above all things. Iam above all and all things are under my feet (Psalm 8:6) because I have set my mind on things of the above, the heavenly things (Colossians 3:2). I have all power from the day I received Christ (John 1:12), I received all power and I have the spirit of power (2Timothy 1:7). Greater is He that is in me (1 John 4:4) and I am more than a conqueror (Romans 8:37). I rejoice because I have overcome the world through Christ (John 16:33)",prayerPoint:"Heavenly Father, lift me above all things in my life, in the name of Jesus.",speakWords:"I speak grace to be above all things in my life.",callForth:"I call forth grace of above all things to manifest in my life now!!!",grace:"I have received the grace to be above all things.",whatDoISee:"I see myself above all things in my generation",thankGod:"Father I thank you for making me above all things."},
+    {focus:"My Faith Is Victory",scriptureRef:"1 John 5:4",version:"KJV",scriptureText:"For whatever is born of God overcomes the world. And this is the victory that has overcome the world - our faith.",personalised:"",dailyWords:"My faith comes by hearing the word of God (Romans 10:17) and without faith I cannot please God (Hebrews 11:6). Through my faith in Christ, I believe that God exist (Hebrews 11:6). Iam born of God, the Spirit of God lives in me and my faith in Christ is victory and I have overcome the world through Christ. My faith is the victory that overcomes every situations in my life. No matter the situation, faith is the victory. My faith is strengthen each day by the word of God. Iam victorious in my life, in my marriage and ministry.",prayerPoint:"Heavenly Father, I pray for victory in every area of my life, in the name of Jesus Christ.",speakWords:"I speak victory over my life.",callForth:"I call forth victory to manifest in my life now!!!",grace:"I have received the grace of victory in my life.",whatDoISee:"I see myself victorious in my generation",thankGod:"Father I thank you for giving me victory in my life."},
+    {focus:"Defeated Satan",scriptureRef:"Colossians 2:15",version:"NLT",scriptureText:"He defeated the rulers and powers of the spiritual world. With the cross he won the victory over them and led them away, as defeated and powerless prisoners for the whole world to see.",personalised:"",dailyWords:"The day I became born again, I already defeated Satan and the demons of darkness. When Jesus defeated Satan, I was in him. Now Iam seated with Christ in heavenly realms, far above all principalities and powers. Satan and his agents of darkness are under my feet Iam superior to them. As a Christian, Iam not a victim in the hand of Satan and his agents. The power of the devil is the ignorance of the believer. I enforce my rights and maintain what Christ has obtained for me. Iam greater and superior to Satan and his agents. Satan has no authority and power over me. I refuse him any chance to steal from me.",prayerPoint:"Father, I pray for the Unstoppable Greatness in my life, in the name of Jesus.",speakWords:"I speak Unstoppable Greatness in my life",callForth:"I call forth Unstoppable Greatness to manifest in my life now!!!",grace:"I have received the grace of Unstoppable Greatness in my life",whatDoISee:"I see Unstoppable Greatness in my generation",thankGod:"Father I thank you for making me Unstoppable Greatness"},
+    {focus:"My Identity Is In Christ",scriptureRef:"Colossians 3:3",version:"KJV",scriptureText:"For you died, and your life is hidden with Christ in God.",personalised:"",dailyWords:"My identity as a Christian is in Christ and in Christ, I have been made a royal priesthood, a holy person, a righteous person, a sanctified, justified, forgiven and reconciled person. In Christ, the greater one (the Holy Spirit) lives inside me, and Iam also a partner of the divine nature. I cannot be condemned or be disadvantaged. I know who Iam in Christ. In Christ, I have discovered my identity.",prayerPoint:"Father, open my mindset to understand all scriptures in my life, in the name of Jesus.",speakWords:"I speak understanding of scriptures in my life.",callForth:"I call forth understanding of scriptures in my life",grace:"I have received the grace of understanding of scriptures in my life",whatDoISee:"I see myself explaining scriptures in my generation",thankGod:"Father, I thank you for making me understand all scriptures in my life"},
+    {focus:"My Born Again Spirit",scriptureRef:"John 3:6",version:"KJV",scriptureText:"",personalised:"",dailyWords:"My spirit was created in righteousness and true holiness when I was born again (Eph. 4:24). Then, the Holy Spirit sealed this purity into my brand-new spirit (Eph. 1:13). Any sin I commit now in my physical actions cannot penetrate or contaminate my spirit because it's been sanctified and perfected forever (Heb. 10:10,14; 12:23). My born-again spirit cannot sin (1 John 3:9)! I have received eternal redemption (Heb. 9:12). This doesn't encourage me to live in sin but instead gives me stability in my life and relationship with God.",prayerPoint:"",speakWords:"",callForth:"",grace:"",whatDoISee:"",thankGod:""},
+    {focus:"Iam In Christ",scriptureRef:"Colossians 3:3",version:"NKJV",scriptureText:"For you died, and your life is hidden with Christ in God.",personalised:"I died, and my life is hidden with Christ in God. I am not outside Him. I am inside Him.",dailyWords:"I am in Christ. This is my foundation, and I will not build on anything else. Before I was saved, I was outside Christ, in Adam, in sin, in the world. But when I believed the gospel, God did a miracle - He took me out of Adam and placed me inside Christ. This is not a feeling I chase. It is a spiritual location I already live in, the way Noah was safe inside the ark before the flood ever came. Because I am in Christ, I share what Christ has, I share where Christ is, and I share what Christ is - His victory, His life, His holiness are mine now. I do not work to get into Christ. I am already in, by faith, and I live every day FROM that place. When fear knocks, I remind myself: I am in Christ, so I am safe. When I pray, I remember I pray from inside Christ, not from outside, begging to be let in. My faith grows strong every time I acknowledge every good thing that is in me in Christ Jesus.",prayerPoint:"Father, thank You for placing me in Christ. Help me to live every day from this place of safety, not striving to reach it.",speakWords:"I speak this over my life: I am in Christ, hidden and safe forever.",callForth:"I call forth a deeper revelation of my life in Christ to manifest in me now!!!",grace:"I have received the grace to live daily from my position in Christ.",whatDoISee:"I see myself standing firm and unshaken, because I am hidden in Christ in God.",thankGod:"Father, I thank You for taking me out of Adam and placing me forever inside Christ."},
+    {focus:"Iam Born Again",scriptureRef:"John 3:3",version:"NKJV",scriptureText:"Jesus answered and said to him, 'Most assuredly, I say to you, unless one is born again, he cannot see the kingdom of God.'",personalised:"I have been born again. I am born of God. I have the life of God in me.",dailyWords:"I am born again. This is not me trying to behave better - this is me carrying a brand new life that came from God Himself. My first birth gave me human nature, fallen because of Adam, but my second birth came from above, and it gave me God's own kind of life, eternal life. God is now my Father, not a distant judge I must impress. I am not just His creation; I am His child, carrying His nature - a nature that loves righteousness and hates sin. My old sinful nature is gone. I belong now to the family of God, and this birth can never be reversed, just as I can never return to my mother's womb. I do not need to beg God for His life; I already carry it. Every day I feed this new nature with the Word of God the same way I feed my body with food, because I am, and will always remain, a child of God.",prayerPoint:"Father, thank You for making me Your child. Teach me to relate to You as my Father, not as a distant judge.",speakWords:"I speak this: I am born again, carrying the very life of God.",callForth:"I call forth the fullness of my new nature to manifest and grow in me now!!!",grace:"I have received the grace to live as a true child of God every day.",whatDoISee:"I see myself walking confidently as God's own child, forever, unshaken by my past.",thankGod:"Father, I thank You for the incorruptible seed of Your Word that gave me new life."},
+    {focus:"Iam A New Creation",scriptureRef:"2 Corinthians 5:17",version:"NKJV",scriptureText:"Therefore, if anyone is in Christ, he is a new creation; old things have passed away; behold, all things have become new.",personalised:"I am in Christ, and I am a new creation. Old things in me have passed away; all things in me have become new.",dailyWords:"I am a new creation. I am not a repaired old version of myself; I am a brand new person who never existed before. God did not patch up my old life - He crucified it with Christ, and a completely new me was raised. My old record of sin, guilt, curses, and failure is gone; God does not even remember it. I have a new heart that already loves God, so I do not need to force myself to love Him. I have new power to say no to sin, because sin is no longer my master - I am free. I was created in true righteousness and holiness, made like God on the inside. I remember the eagle raised among chickens: it thought it was a chicken until it saw an eagle fly and remembered who it really was. I refuse to live like a chicken any longer. I stop calling myself by my old name, I stop saying 'I am just a sinner,' and I declare instead, 'I am a new creation.' I renew my mind daily in the Word, and I let my past stay dead while my future in Christ stays alive.",prayerPoint:"Father, thank You for making me completely new. Help me to see myself the way You see me.",speakWords:"I speak this: old things have passed away, and all things in me have become new.",callForth:"I call forth the fullness of my new creation reality to manifest in my daily life now!!!",grace:"I have received the grace to walk daily as the new person I already am in Christ.",whatDoISee:"I see myself flying like an eagle, no longer living like a chicken on the ground.",thankGod:"Father, I thank You for making me a brand new creation in Christ Jesus."},
+    {focus:"Iam Redeemed",scriptureRef:"Ephesians 1:7",version:"NKJV",scriptureText:"In Him we have redemption through His blood, the forgiveness of sins, according to the riches of His grace.",personalised:"In Him I have redemption through His blood, the forgiveness of my sins, according to the riches of His grace.",dailyWords:"I am redeemed. I was once a slave - to sin, to Satan, to the curse of the law, to fear, to poverty, and to death - and I could not free myself. But Jesus paid the full price for my freedom, not with money, but with His own precious blood. Because of that price, sin can no longer force me; I can say no to it. I am free from the curse of the law, so sickness, poverty, and spiritual death have no right over me. I am fully forgiven - my sins, past, present, and future, are covered because the price was paid in full, not in part. I now belong to a new owner, Jesus, and He takes good care of what belongs to Him. When guilt tries to rise, I say: I am redeemed by the blood of Jesus, I am forgiven. When fear tries to grip me, I say: I am redeemed, I belong to Jesus, and nothing can take me from His hand. I live like a free person, not like a slave, and I thank Jesus every day for the blood that bought me back.",prayerPoint:"Father, thank You for the precious blood of Jesus that redeemed me completely.",speakWords:"I speak this: I am redeemed, forgiven, and free forever.",callForth:"I call forth the full manifestation of my freedom from every curse to show in my life now!!!",grace:"I have received the grace to live free, not as a slave to my past.",whatDoISee:"I see myself walking in total freedom, owned by Jesus alone.",thankGod:"Father, I thank You for buying me back with the precious blood of Jesus."},
+    {focus:"Iam Holy",scriptureRef:"Hebrews 10:10",version:"NKJV",scriptureText:"By that will we have been sanctified through the offering of the body of Jesus Christ once for all.",personalised:"By that will I have been made holy through the offering of the body of Jesus Christ, once for all.",dailyWords:"I am holy. This is not something I earn by good behaviour; it is who I already am because Christ made me holy through His death. Holiness means I am set apart, different, pure - and I did not achieve this by my own works, I received it by His finished offering. Positionally, I am holy because Christ is holy and I am in Him, and this never changes. Practically, I live a clean life because I already AM clean, the same way a mango tree produces mangoes simply because it is a mango tree - I do not live holy to become holy; I live holy because I am holy. I am set apart for God alone, pure in His eyes, blameless and above reproach in His sight, and no one can accuse me before God. When temptation whispers, I remind myself: I am holy, this sin does not fit my nature. I separate myself from things that are not holy, not to become holy, but because I already am, and I let my conduct match my true identity.",prayerPoint:"Father, thank You for making me holy through the finished work of Jesus. Help my life to match this truth.",speakWords:"I speak this: I am holy, set apart, and blameless in Christ.",callForth:"I call forth a life that fully reflects the holiness I already carry, now!!!",grace:"I have received the grace to live a set-apart, holy life daily.",whatDoISee:"I see myself pure and blameless before God, unaffected by the pull of the world.",thankGod:"Father, I thank You for making me holy once for all through Jesus."},
+    {focus:"Iam Righteous",scriptureRef:"2 Corinthians 5:21",version:"NKJV",scriptureText:"For He made Him who knew no sin to be sin for us, that we might become the righteousness of God in Him.",personalised:"He made Him who knew no sin to be sin for me, so that I might become the righteousness of God in Him.",dailyWords:"I am righteous. This is the most important truth I carry as a Christian. I am not righteous because of what I have done; I am righteous because I received it as a gift, through the great exchange - Jesus, who never sinned, became sin for me, and in exchange I became the righteousness of God in Him. Because of this, I can stand before God without fear or any sense of inferiority; I come boldly to His throne. God is pleased with me because when He looks at me, He sees Christ's righteousness covering me. I reign in life through this gift of righteousness, and my prayers are powerful and effective because I am that righteous person the Word speaks of. I refuse to labour to earn what I already have. I do not do good works to become righteous - I do good works because I already AM righteous, and good works are simply the fruit growing from that root. When the enemy accuses me, I answer: I am the righteousness of God in Christ. I come to God boldly, not as a slave begging, but as a righteous child, and I live right because righteousness is now my very nature.",prayerPoint:"Father, thank You for making me the righteousness of God in Christ. Let me live from this truth every day.",speakWords:"I speak this: I am the righteousness of God in Christ Jesus.",callForth:"I call forth boldness before God's throne to manifest fully in my prayer life now!!!",grace:"I have received the grace to reign in life through the gift of righteousness.",whatDoISee:"I see myself approved, accepted, and reigning in every area of my life.",thankGod:"Father, I thank You for the gift of righteousness that I did not earn but freely received."},
+    {focus:"Iam Sanctified",scriptureRef:"1 Corinthians 6:11",version:"NKJV",scriptureText:"And such were some of you. But you were washed, but you were sanctified, but you were justified in the name of the Lord Jesus and by the Spirit of our God.",personalised:"Such was I. But I was washed, I was sanctified, I was justified in the name of the Lord Jesus and by the Spirit of our God.",dailyWords:"I am sanctified. I am set apart, made holy, separated for God's special use - not through a slow process I am still waiting to complete, but as a finished work that happened the moment I believed. I was washed, I was sanctified, I was justified - all in the past tense, all already done. I am set apart for God alone, just like the vessels in the temple were set apart only for His use; the devil has no legal claim to use me anymore. The blood of Jesus has cleansed me completely, and by one offering He has perfected me forever - in God's eyes I am perfect because I am in Christ. I understand the difference between my position and my practice: in position I am already sanctified, perfect, and holy; in practice, my mind and body are simply learning day by day to walk in that truth. My practice grows out of my position, never the other way around. I know I am set apart, so I refuse to follow the crowd. I do not let sin use my body, because my body is sanctified for God, and I say no to anything that defiles, because I am His special vessel, ready for His special work.",prayerPoint:"Father, thank You for washing, sanctifying, and justifying me completely in Jesus' name.",speakWords:"I speak this: I am sanctified, set apart, and made holy in Christ.",callForth:"I call forth the full manifestation of my set-apart living to show in me now!!!",grace:"I have received the grace to live as God's special vessel every day.",whatDoISee:"I see myself set apart from the crowd, useful and ready in God's hands.",thankGod:"Father, I thank You for perfecting me forever through the one offering of Jesus."},
+    {focus:"Iam Justified",scriptureRef:"Romans 5:1",version:"NKJV",scriptureText:"Therefore, having been justified by faith, we have peace with God through our Lord Jesus Christ.",personalised:"Having been justified by faith, I have peace with God through my Lord Jesus Christ.",dailyWords:"I am justified. This is more than forgiveness - forgiveness says I did wrong but I am pardoned; justification says I am declared as one who has never done wrong, my record is completely clean. I was not justified by my good works or by keeping the law; I was justified the moment I believed that Jesus died for me and rose again. Because of this, the war between me and God is over - I have peace with Him. No one can bring a charge against me, because it is God Himself who justifies, and if He declares me not guilty, no accusation can stand. In heaven's court there is no file against me; it has been destroyed by the blood of Jesus. I have open access to God's presence, anytime, without fear, because I am justified - fully and completely, today, not gradually over time. I refuse to live in guilt any longer. When people or the enemy try to accuse me, I answer: I am justified by God, who can bring a charge against me? I enjoy peace with God, I am not afraid of Him, and I walk with boldness, knowing my record is clean through the blood of Jesus.",prayerPoint:"Father, thank You for justifying me completely. Let me walk in peace with You, without guilt.",speakWords:"I speak this: I am justified, declared not guilty by God Himself.",callForth:"I call forth the full peace of my justification to rule my heart now!!!",grace:"I have received the grace to live free from guilt and condemnation.",whatDoISee:"I see myself standing before God with a clean record, at peace, unafraid.",thankGod:"Father, I thank You for the peace with You that came through my justification by faith."},
+    {focus:"Iam A Royal Priesthood",scriptureRef:"1 Peter 2:9",version:"NKJV",scriptureText:"But you are a chosen generation, a royal priesthood, a holy nation, His own special people, that you may proclaim the praises of Him who called you out of darkness into His marvelous light.",personalised:"I am a chosen generation, a royal priesthood, a holy nation, His own special person, that I may proclaim the praises of Him who called me out of darkness into His marvelous light.",dailyWords:"I am a royal priesthood - a king-priest in Christ, something that was impossible under the Old Testament, where kingship and priesthood never mixed in one person. As a priest, I have direct access to God; I do not need another person to go to God for me, I enter His presence myself through Jesus. My worship, my prayers, my giving, and my life itself are spiritual sacrifices that please Him, and I stand in the gap, praying for others and bringing people to God. As a royal, kingly person, I carry authority - authority over sin, sickness, and Satan. I am part of a chosen generation; God selected me on purpose, and I am His own special possession, deeply valuable to Him. My daily assignment as a royal priest is to show forth the praises of the One who called me out of darkness into His wonderful light - I tell others how good God has been to me. I come boldly to God's throne every day as a priest, without fear, I use my authority as a king to speak to my situations in Jesus' name, I worship Him daily, and I share Jesus with everyone I can.",prayerPoint:"Father, thank You for making me a king and priest unto You. Help me to walk boldly in both.",speakWords:"I speak this: I am a royal priesthood, chosen and set apart to serve God.",callForth:"I call forth boldness in worship and authority in prayer to manifest in me now!!!",grace:"I have received the grace of kingship and priesthood in my life.",whatDoISee:"I see Kingship and Priesthood fully expressed in my life and generation.",thankGod:"Father, I thank You for calling me out of darkness into Your marvelous light."},
+    {focus:"Iam A King Unto God",scriptureRef:"Revelation 5:10",version:"KJV",scriptureText:"And has made us unto our God Kings and Priest, and we shall reign on the earth.",personalised:"He has made me unto my God a King and a Priest, and I shall reign on the earth.",dailyWords:"I am a king unto God. God did not save me to be a slave; He saved me to reign. I reign in life through Jesus Christ - I do not beg life to be good to me, I reign over life, over sin, over sickness, over fear, and over failure. Dominion was given to man from the beginning, and in Christ my dominion has been fully restored. As a king, my words carry weight - I decree a thing and it is established for me, because a king's word has power, and my words have power because I am a king. As a king unto God, I represent Him; I bring heaven's rule to earth wherever I go, and this kingship is not temporary - I will reign with Christ forever. I refuse to beg when I have already been given authority to decree. I stop begging and start decreeing; I speak to my situations in the name of Jesus. I know my authority over the devil, and I use it. I live with dignity, not like a slave to sin, and I rule over my thoughts, my emotions, and my circumstances rather than letting them rule me.",prayerPoint:"Father, thank You for making me a king in Christ. Teach me to decree Your Word with confidence.",speakWords:"I speak this: I am a king unto God, and I reign in life through Jesus Christ.",callForth:"I call forth Kingship and Priesthood to manifest fully in my life now!!!",grace:"I have received the grace of Kingship and Priesthood in my life.",whatDoISee:"I see Kingship and Priesthood in my life and in my generation.",thankGod:"Father, I thank You for making me a king and a priest, ruling with You on the earth."},
+    {focus:"Iam A Saint",scriptureRef:"Ephesians 1:1",version:"NKJV",scriptureText:"Paul, an apostle of Jesus Christ by the will of God, To the saints who are in Ephesus, and faithful in Christ Jesus.",personalised:"Paul was writing to the saints - and I am one of them, faithful in Christ Jesus.",dailyWords:"I am a saint. Not a dead, special person made a saint by an institution after many good works, but a normal, living believer, set apart the moment I believed. The word saint simply means 'holy one,' 'set apart one,' and it comes from the same root as holy and sanctified. When Paul wrote to the saints in Ephesus and Corinth and Colossae, he was writing to ordinary Christians, sometimes struggling, but still saints - just like me. I am holy by God's calling, not by my own works; it is His call on me that makes me a saint. I am set apart for God, not common, but special to Him, and I belong to His family of saints across the earth. I refuse to identify myself only as 'a sinner saved by grace.' I WAS a sinner, but now I AM a saint saved by grace - my old identity is gone. I call myself what God calls me: I am a saint. I live clean because sin does not fit a saint. I stay in fellowship with other saints, love the church, and represent God well, because as a saint, I show the world what God is really like.",prayerPoint:"Father, thank You for calling me a saint. Help me to live worthy of that name every day.",speakWords:"I speak this: I am a saint, holy and set apart for God.",callForth:"I call forth a saintly life to be fully manifested in me now!!!",grace:"I have received the grace to live like a saint, not like my old self.",whatDoISee:"I see myself walking clean, set apart, and representing God well wherever I go.",thankGod:"Father, I thank You for calling me a saint and no longer counting me a sinner."},
+    {focus:"Iam Anointed",scriptureRef:"1 John 2:27",version:"NKJV",scriptureText:"But the anointing which you have received from Him abides in you, and you do not need that anyone teach you; but as the same anointing teaches you concerning all things, and is true, and is not a lie, and just as it has taught you, you will abide in Him.",personalised:"The anointing which I received from Him abides in me, and I do not need anyone to teach me, for that same anointing teaches me all things and is true, and just as it has taught me, I abide in Him.",dailyWords:"I am anointed. To be anointed means I am empowered by the Holy Spirit for a special work, and unlike the Old Testament where only a few were anointed with oil, I - as a believer - carry this anointing simply because the Holy Spirit lives inside me. He is my anointing. Because of Him, I am empowered to serve God; I have power to witness, to pray for the sick, and to do good. I am taught by the Spirit; His anointing teaches me all things, and I have an inner teacher who guides me into truth, so I do not need to wait on a man to explain everything to me. I am set apart for God's specific plan for my life. The yoke is destroyed because of the anointing that lives in me - every burden of the enemy meets its end at the anointing inside me. This anointing does not come and go; it abides in me forever. I do not need to wait for a special man of God to anoint me - I am already anointed. I stay conscious of the Holy Spirit within me, I talk to Him, I refuse to say 'I have no power,' and I step out to serve God, trusting the anointing to flow as I stay close to Christ.",prayerPoint:"Father, thank You for the anointing of Your Holy Spirit living inside me. Teach me to depend on Him daily.",speakWords:"I speak this: I am anointed, and the anointing in me destroys every yoke.",callForth:"I call forth the fullness of the anointing to flow through me now!!!",grace:"I have received the grace to walk daily in the power of the Holy Spirit.",whatDoISee:"I see every yoke of the enemy destroyed because of the anointing that abides in me.",thankGod:"Father, I thank You for the Holy Spirit's anointing that lives and abides in me forever."},
+    {focus:"Iam A Child Of Light",scriptureRef:"Ephesians 5:8",version:"NKJV",scriptureText:"For you were once darkness, but now you are light in the Lord. Walk as children of light.",personalised:"I was once darkness, but now I am light in the Lord. I walk as a child of light.",dailyWords:"I am a child of light. Before I was saved, I was not just someone sitting in darkness - I WAS darkness. But now, my very nature is light; I am not simply someone who possesses light, I AM light in the Lord. I have no fellowship with darkness - with sin, ignorance, or anything that belongs to Satan's kingdom - because light and darkness cannot mix, and I am separate. I shine wherever I go, because light always shines and can never truly be hidden; my presence drives darkness away. I show people the way to Jesus, and my life produces the fruit of light - goodness, righteousness, and truth. I belong to the day, not the night; my future is bright, and I walk in understanding, not confusion. Because Jesus is the light of the world and I am in Him, I too am light to the world around me. I refuse to participate in sinful, evil, or dirty things, because I am light. I let my light shine boldly, I do not hide my faith, I walk in love and truth, I stay rooted in the Word to keep my light burning bright, and I help others come out of darkness by sharing the gospel with them.",prayerPoint:"Father, thank You for making me light in You. Let my life always push back darkness wherever I go.",speakWords:"I speak this: I am light in the Lord, and darkness has no hold on me.",callForth:"I call forth my light to shine brighter every day, manifesting fully now!!!",grace:"I have received the grace to walk as a true child of light.",whatDoISee:"I see darkness fleeing everywhere I go, because I carry the light of Christ.",thankGod:"Father, I thank You for turning me from darkness into a child of Your marvelous light."},
+    {focus:"Iam The Firstfruit Of God",scriptureRef:"James 1:18",version:"NKJV",scriptureText:"Of His own will He brought us forth by the word of truth, that we might be a kind of firstfruits of His creatures.",personalised:"Of His own will He brought me forth by the word of truth, that I might be a kind of firstfruit of His creation.",dailyWords:"I am the firstfruit of God. In the Old Testament, the firstfruit of the harvest was the most special part - it belonged to God, it was holy, it was the best, and it announced that a greater harvest was still coming. That is exactly what I am to God. I am holy to the Lord, precious to Him, the best of His creation, and He is proud of me as His prized possession. I am protected, because those who touch God's firstfruit touch something very special to Him, and no one can destroy what He treasures. I am also a sign of more harvest to come - God saved me first so that through me, more people in my family, city, and nation would come to know Him. I carry the firstfruits of the Spirit even now, a small taste of the great glory that is still coming. Being firstfruit means I am first in God's heart, not last, not forgotten. I remind myself daily that I am precious and valuable to God. I walk in holiness because I am holy to Him. I refuse fear, because God protects His firstfruits, I expect a great harvest of souls to come through my life, and I give God my very best, because as His firstfruit, I fully belong to Him.",prayerPoint:"Father, thank You for making me Your firstfruit. Use my life to bring in a great harvest for Your kingdom.",speakWords:"I speak this: I am the firstfruit of God, holy and precious to Him.",callForth:"I call forth a great harvest of souls to come through my life now!!!",grace:"I have received the grace to walk as God's prized and protected possession.",whatDoISee:"I see a great harvest of souls being gathered through my life for the kingdom.",thankGod:"Father, I thank You for making me holy to You and the beginning of a great harvest."},
+    {focus:"Iam Seated With Christ",scriptureRef:"Ephesians 2:6",version:"NKJV",scriptureText:"And raised us up together, and made us sit together in the heavenly places in Christ Jesus.",personalised:"He raised me up together with Christ, and made me sit together with Him in the heavenly places in Christ Jesus.",dailyWords:"I am seated with Christ. I am not struggling to reach heaven; I am already seated in heavenly places in Christ Jesus. When Jesus died, I died with Him; when He was raised, I was raised with Him; and when He sat down at the right hand of God, I sat down with Him too. To be seated means my work is finished - Jesus completed the work of salvation, so I do not need to strain to be accepted by God; I simply rest in what He has already done. I am seated in a place of authority, far above every principality and power, which means every power of darkness is under my feet, not over my head. I share in Christ's honour, seated at the place of highest esteem. From this seated position, I see my problems from above, not from below, and they shrink in the light of heaven's view. I no longer try to fight my way up to heaven from earth; I live from heaven down to earth. I rest, I stop struggling and worrying. I use my authority, speaking to sickness, fear, and every attack from my seated place. I set my mind on things above, and I see my challenges as already under my feet.",prayerPoint:"Father, thank You for seating me with Christ far above every power of darkness. Teach me to rest and reign from that place.",speakWords:"I speak this: I am seated with Christ, far above every power of darkness.",callForth:"I call forth the full manifestation of heaven's authority working through me now!!!",grace:"I have received the grace to rest in Christ's finished work and reign from heaven's position.",whatDoISee:"I see every power of darkness under my feet, and my problems small from heaven's view.",thankGod:"Father, I thank You for raising me up and seating me together with Christ in the heavenly places."},
+    {focus:"Iam The Beloved Of God",scriptureRef:"1 John 3:1",version:"NKJV",scriptureText:"Behold what manner of love the Father has bestowed on us, that we should be called children of God!",personalised:"Behold what manner of love the Father has given to me, that I should be called a child of God.",dailyWords:"I am the beloved of God. I am not merely tolerated by Him - I am deeply, personally loved. I am accepted in the Beloved, because Jesus is God's Beloved Son, and since I am in Christ, I too am beloved. I do not need to earn this love; God already accepts me because I am in His Beloved Son, and when He looks at me, He sees His beloved child. I was chosen to be loved - holy and beloved, part of God's elect - and 'beloved of God' is literally my name, the way scripture addresses every believer. Nothing can separate me from His love which is in Christ Jesus; no failure, no distance, no accusation can undo it. Many people know God loves the world, but I know something deeper - God loves ME personally. And when I truly know I am beloved, fear has to leave, because perfect love casts out fear, and I become secure in who I am. I receive God's love every single day and refuse to push it away. I stop trying to earn a love I already fully have. I let His love heal every place in my heart wounded by rejection, and I love others freely, because I was first loved by Him. When I feel alone, I remind myself: I am the beloved of God, and the Father loves me exactly as He loves Jesus.",prayerPoint:"Father, thank You for loving me personally and deeply. Heal every place in my heart that doubts Your love.",speakWords:"I speak this: I am the beloved of God, accepted and secure forever.",callForth:"I call forth a deep revelation of the Father's personal love to manifest in me now!!!",grace:"I have received the grace to live secure, loved, and accepted by God.",whatDoISee:"I see myself walking fearless and secure, fully convinced of the Father's love for me.",thankGod:"Father, I thank You for loving me as deeply and personally as You love Jesus."},
+    {focus:"Iam Blessed In Christ",scriptureRef:"Ephesians 1:3",version:"NKJV",scriptureText:"Blessed be the God and Father of our Lord Jesus Christ, who has blessed us with every spiritual blessing in the heavenly places in Christ.",personalised:"Blessed be the God and Father of my Lord Jesus Christ, who has blessed me with every spiritual blessing in the heavenly places in Christ.",dailyWords:"I am blessed in Christ. I am not trying to become blessed; the Word says God HAS blessed me with EVERY spiritual blessing in heavenly places in Christ - past tense, already done, and it is EVERY blessing, not just some. This includes forgiveness, righteousness, holiness, redemption, wisdom, peace, joy, health, and everything else heaven holds - it is all already mine in Christ. I carry the blessing of Abraham, who was blessed in every area - spirit, soul, body, finances, family, and favour - and that same blessing has come upon me through Jesus. I cannot be cursed; once God blesses, He does not reverse it, so no witch, no enemy, and no demon has power to curse what God has already blessed. I am blessed so that I can be a blessing to others, and my blessing is never based on my performance - it is based entirely on Christ, and because I am in Him, I am blessed. I refuse to beg for blessing any longer; instead, I thank God that I am already blessed. I say boldly: I am blessed in Christ with every spiritual blessing. I expect good things, I share what I have been given, and when sickness or lack tries to come near, I declare: I am blessed, and the curse has no right over me.",prayerPoint:"Father, thank You for blessing me with every spiritual blessing in Christ. Help me live from blessing, not toward it.",speakWords:"I speak this: I am blessed in Christ, and no curse can stand against me.",callForth:"I call forth the full manifestation of every spiritual blessing already mine now!!!",grace:"I have received the grace of Abraham's blessing over my spirit, soul, body, and finances.",whatDoISee:"I see myself blessed and favoured everywhere I go, in every season of my life.",thankGod:"Father, I thank You for blessing me with every spiritual blessing in the heavenly places in Christ."},
+    {focus:"Iam The Salt Of The Earth",scriptureRef:"Matthew 5:13",version:"NKJV",scriptureText:"You are the salt of the earth; but if the salt loses its flavor, how shall it be seasoned? It is then good for nothing but to be thrown out and trampled underfoot by men.",personalised:"I am the salt of the earth. I will guard my flavour so I remain useful and never good for nothing.",dailyWords:"I am the salt of the earth. Jesus did not say I will become salt - He said I already AM salt, and in His day, salt was extremely valuable, carrying three purposes that describe exactly what I am in this world. As salt, I preserve - I stop moral decay around me, in my family, my workplace, and my nation; my presence and my prayers hold back the spread of evil. As salt, I give taste - a world without Christ has no true joy, but I bring flavour, goodness, and life wherever I go, and people should sense something good in being near me. As salt, I create thirst - my peace, my joy, and my purity should make people around me thirsty for Jesus, wanting what I carry. I am careful never to lose my flavour by mixing too deeply with the sinful patterns of this world, because salt that loses its taste is good for nothing. I preserve my environment, standing for truth and refusing to let evil grow unchecked where I am. I bring good flavour through kindness, joy, and grace-seasoned speech. I let my life create thirst for Jesus in the people around me, and I guard my saltiness by staying separate from sin, while living in peace with fellow believers.",prayerPoint:"Father, thank You for making me the salt of the earth. Help me never to lose my flavour to the world around me.",speakWords:"I speak this: I am the salt of the earth, preserving and creating thirst for Jesus.",callForth:"I call forth a life of preserving influence and God-given flavour to manifest now!!!",grace:"I have received the grace to remain salty and useful in every environment I am placed in.",whatDoISee:"I see people around me growing thirsty for Jesus because of the flavour of my life.",thankGod:"Father, I thank You for making me valuable salt in this earth."},
+    {focus:"Iam The Light Of The World",scriptureRef:"Matthew 5:14",version:"NKJV",scriptureText:"You are the light of the world. A city that is set on a hill cannot be hidden.",personalised:"I am the light of the world. I am like a city set on a hill that cannot be hidden.",dailyWords:"I am the light of the world. Jesus is the source of light, like the sun; I am the reflector, like the moon, carrying no light of my own except the light of Christ shining through me. Because of this, I drive away darkness wherever I go - I do not need to fear it, because I am more powerful than it. I am like a city on a hill that cannot be hidden; God did not save me to hide me, He saved me to display me. My life shows people the way; those lost in sin find their path to God through the light I carry. My good works are not what make me light - they simply show that I already am light, so I let my light shine before people, that they may see my good works and glorify my Father in heaven. The darker the world around me becomes, the brighter I am called to shine, like a light in the midst of a crooked and perverse generation. I refuse to hide my lamp under fear, shame, or compromise. I shine every day, without hiding my faith. I do good works that reveal the light in me, I speak boldly about Jesus without embarrassment, and I stay closely connected to Christ, my source, because the closer I stay to Him, the brighter I shine.",prayerPoint:"Father, thank You for making me light in this dark world. Help me shine boldly and never hide my lamp.",speakWords:"I speak this: I am the light of the world, and I cannot be hidden.",callForth:"I call forth a bold, unhidden light to shine through my life now!!!",grace:"I have received the grace to shine brightly in the midst of a dark generation.",whatDoISee:"I see my light drawing people out of darkness and into God's marvelous light.",thankGod:"Father, I thank You for making me a city set on a hill that cannot be hidden."},
+    {focus:"Iam An Eagle In Christ",scriptureRef:"Isaiah 40:31",version:"NKJV",scriptureText:"But those who wait on the Lord shall renew their strength; They shall mount up with wings like eagles, They shall run and not be weary, They shall walk and not faint.",personalised:"Because I wait on the Lord, I renew my strength. I mount up with wings like an eagle; I run and I am not weary; I walk and I do not faint.",dailyWords:"I am an eagle in Christ. I am not a chicken made to live low on the ground; I am made to soar high in the sky of the Spirit. Like the eagle raised among chickens that lived like a chicken until it saw another eagle fly and remembered who it truly was, I refuse to keep living beneath my true identity. Eagles fly high, and so do I - I am not made to live low in sin, fear, and defeat, but to mount up with wings as an eagle and soar in the Spirit. Eagles have strong vision, and I carry spiritual vision too; I see what God sees, I am not blind to His truth or His plans for me. Eagles run without growing weary, and I carry new strength in Christ that does not run out. Like the eagle whose youth is renewed, my strength is renewed in Him. Like the eagle that God hovers over and carries on His wings, I know God carries me through every season. And like the eagle that flies above the storm instead of hiding from it, I fly above every storm that tries to rise against me. I stop living like a chicken. I think high thoughts, I wait on the Lord for fresh strength, I see my life from God's perspective, I soar above my problems instead of living beneath them, and I renew my strength daily through prayer and the Word.",prayerPoint:"Father, thank You for making me an eagle in Christ. Renew my strength daily as I wait on You.",speakWords:"I speak this: I am an eagle in Christ, and I soar above every storm.",callForth:"I call forth eagle-strength and eagle-vision to manifest fully in my life now!!!",grace:"I have received the grace to rise above every storm and every weariness.",whatDoISee:"I see myself soaring high above every circumstance that tries to weigh me down.",thankGod:"Father, I thank You for renewing my strength like the eagle's, again and again."},
+    {focus:"Iam Defined By God",scriptureRef:"Isaiah 43:1",version:"NKJV",scriptureText:"But now, thus says the Lord, who created you, O Jacob, And He who formed you, O Israel: Fear not, for I have redeemed you; I have called you by your name; You are Mine.",personalised:"But now, thus says the Lord who created me and formed me: Fear not, for I have redeemed you; I have called you by your name; you are Mine.",dailyWords:"I am defined by God, not by people, not by my past, not by my failures, and not by my circumstances. The world will try to define me - my family may try to define me by my past, society may try to define me by my education, my money, or my background, and the enemy will try to define me by my weaknesses. But only God has the right to define me, and here is what He says: He knew me before I was formed in the womb; He knew me before anyone else ever did. He has called me by my own name - I am not a number to Him, He knows exactly who I am. I am fearfully and wonderfully made, not a mistake, but made with care and purpose. I am part of His own special people, a chosen generation, a royal priesthood, a holy nation, belonging to Him specially. My identity is not built on what I do; it is built entirely on what God says about me. When I let God define me, I become truly free - I no longer chase people's approval, I no longer fear their rejection, because I already know who I am. I refuse every other definition. When people call me a failure, poor, or useless, I answer: I am defined by God, not by you. I listen to God's Word daily, because His Word is His definition of me. I know I am wonderfully made, I refuse to hate myself, and I live from God's unchanging definition, not from my changing feelings, speaking what God says about me every single day.",prayerPoint:"Father, thank You for defining me by Your Word. Let me never accept a definition from anyone else again.",speakWords:"I speak this: I am defined by God alone, known, called, and wonderfully made.",callForth:"I call forth the fullness of my true identity in God to manifest completely now!!!",grace:"I have received the grace to live from God's definition of me, not from people's opinions.",whatDoISee:"I see myself free from every wrong label, standing secure in who God says I am.",thankGod:"Father, I thank You for knowing me, calling me by name, and defining who I truly am."}
   ];
   for(var i=0;i<seed.length;i++){
     var d = new Date(base.getTime());
@@ -918,110 +804,6 @@ function clearAllMessages(){
   messages = [];
   saveMessagesToStorage();
   renderToday(); renderList(); renderSettingsUI();
-}
-
-/* ---------------- BIBLE AI (Gemini) ---------------- */
-var GEMINI_MODEL = 'gemini-3.1-flash-lite';
-
-function callGemini(promptText, systemText){
-  var apiKey = settings.geminiApiKey;
-  if(!apiKey){
-    return Promise.reject({message:'Add your Gemini API key in Settings first (Bible AI section).'});
-  }
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent?key='+encodeURIComponent(apiKey);
-  var body = { contents: [{ role:'user', parts:[{ text: promptText }] }] };
-  if(systemText){ body.systemInstruction = { role:'system', parts:[{ text: systemText }] }; }
-  return fetch(url, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  }).catch(function(){
-    throw { message: 'Could not reach Gemini - check your internet connection.' };
-  }).then(function(res){
-    if(!res.ok){
-      return res.text().then(function(t){
-        throw { message: 'Gemini error ('+res.status+'). Check your API key and internet connection.' , raw:t };
-      });
-    }
-    return res.json();
-  }).then(function(data){
-    var text = '';
-    try{
-      var cands = data.candidates || [];
-      if(cands[0] && cands[0].content && cands[0].content.parts){
-        for(var i=0;i<cands[0].content.parts.length;i++){
-          text += cands[0].content.parts[i].text || '';
-        }
-      }
-    }catch(e){}
-    if(!text){ throw { message:'No response text returned from Gemini. Try rephrasing.' }; }
-    return text;
-  });
-}
-
-function setAiStatus(msg){
-  var el = document.getElementById('aiStatus');
-  if(el) el.textContent = msg;
-}
-
-function generateDailyWordAI(){
-  var topic = document.getElementById('aiPrompt').value.trim();
-  if(!topic){ alert('Type a topic or focus first, e.g. "healing" or "faith in trials".'); return; }
-  document.getElementById('aiResultWrap').classList.add('hidden');
-  setAiStatus('Generating Daily Word...');
-  var sys = "You are a devotional writing assistant for a Christian ministry app called 'My Daily Words - Speak the Word'. Given a short topic or focus from the pastor, write one complete daily devotional in the same declarative, faith-confession style as: 'In Christ, Iam a King and thus who Iam...'. Respond with ONLY valid JSON, no markdown fences, no commentary, using exactly these keys: focus, scriptureRef, version, scriptureText, personalised, dailyWords, prayerPoint, speakWords, callForth, grace, whatDoISee, thankGod. version must be one of: KJV, NKJV, NIV, NLT, AMPLIFIED, ERV, ESV, CHINYANJA. scriptureText must be the actual text of that reference in that version. personalised rewrites the verse using first-person I/me/my. dailyWords is 4-7 sentences, first person, faith-affirming, may cite supporting references in parentheses. prayerPoint, speakWords, callForth, grace, whatDoISee, thankGod are each one short first-person sentence.";
-  callGemini('Topic/Focus: ' + topic, sys).then(function(text){
-    var cleaned = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    var obj;
-    try{ obj = JSON.parse(cleaned); }
-    catch(e){ setAiStatus('Could not read the AI response as structured data. Try again or rephrase the topic.'); return; }
-    fillEditorFromAiObject(obj);
-    setAiStatus('Daily Word generated below - review, then Save Message.');
-  }).catch(function(err){
-    setAiStatus((err && err.message) ? err.message : 'Gemini request failed.');
-  });
-}
-
-function fillEditorFromAiObject(obj){
-  if(obj.focus) document.getElementById('f_focus').value = obj.focus;
-  if(obj.scriptureRef) document.getElementById('f_scriptureRef').value = obj.scriptureRef;
-  if(obj.version && BIBLE_VERSIONS.indexOf(String(obj.version).toUpperCase())>-1){ document.getElementById('f_version').value = String(obj.version).toUpperCase(); }
-  if(obj.scriptureText) document.getElementById('f_scriptureText').value = obj.scriptureText;
-  if(obj.personalised) document.getElementById('f_personalised').value = obj.personalised;
-  if(obj.dailyWords) document.getElementById('f_dailyWords').value = obj.dailyWords;
-  if(obj.prayerPoint) document.getElementById('f_prayerPoint').value = obj.prayerPoint;
-  if(obj.speakWords) document.getElementById('f_speakWords').value = obj.speakWords;
-  if(obj.callForth) document.getElementById('f_callForth').value = obj.callForth;
-  if(obj.grace) document.getElementById('f_grace').value = obj.grace;
-  if(obj.whatDoISee) document.getElementById('f_whatDoISee').value = obj.whatDoISee;
-  if(obj.thankGod) document.getElementById('f_thankGod').value = obj.thankGod;
-}
-
-function askBibleAI(){
-  var q = document.getElementById('aiPrompt').value.trim();
-  if(!q){ alert('Type a Bible question, verse, or topic to research first.'); return; }
-  setAiStatus('Researching...');
-  document.getElementById('aiResultWrap').classList.add('hidden');
-  var sys = "You are a Bible research assistant for a pastor's personal study inside an app called My Daily Words. Answer thoroughly and accurately: give relevant Bible verses (reference plus a short quote), related passages, typology or symbolism where relevant, cross references, brief historical/contextual background, and a clear explanation. Use short plain-text headings (no markdown symbols), keep it well organized and readable on a phone screen.";
-  callGemini(q, sys).then(function(text){
-    document.getElementById('aiResultBox').textContent = text;
-    document.getElementById('aiResultWrap').classList.remove('hidden');
-    setAiStatus('Done.');
-  }).catch(function(err){
-    setAiStatus((err && err.message) ? err.message : 'Gemini request failed.');
-  });
-}
-
-function copyAiResult(){
-  var t = document.getElementById('aiResultBox').textContent;
-  if(t) copyToClipboard(t);
-}
-function insertAiResultIntoDailyWords(){
-  var addition = document.getElementById('aiResultBox').textContent;
-  if(!addition) return;
-  var cur = document.getElementById('f_dailyWords').value;
-  document.getElementById('f_dailyWords').value = cur ? (cur + '\n\n' + addition) : addition;
-  alert('Inserted into "My Daily Words" field below.');
 }
 
 /* ---------------- PASTE AUTO-FILL ---------------- */
