@@ -186,6 +186,7 @@ textarea{resize:vertical;}
   <button class="tab-btn active" data-tab="today">Today</button>
   <button class="tab-btn" data-tab="browse">Browse</button>
   <button class="tab-btn" data-tab="editor">Create</button>
+  <button class="tab-btn" data-tab="aicreator">AI Creator</button>
   <button class="tab-btn" data-tab="settings">Settings</button>
 </nav>
 
@@ -223,8 +224,10 @@ textarea{resize:vertical;}
       <div class="hint">Tip: paste text that uses the same labels shown above, then tap "Auto-Fill Fields".</div>
       <div class="btnRow">
         <button class="save" onclick="autoFillFromPaste()">Auto-Fill Fields</button>
+        <button class="save" style="background:var(--blue2)" onclick="loadVerbatimAsNewTopic()">Load Verbatim (New Topic)</button>
         <button class="clear" onclick="document.getElementById('pasteArea').value=''">Clear Paste Box</button>
       </div>
+      <div class="hint">"Load Verbatim" loads your paste as a brand-new topic: if it recognises the labels above it splits the text into the matching fields (just like Auto-Fill), and if it finds no labels at all it drops the whole paste, exactly as typed, into "My Daily Words" instead. Either way, review the fields, edit anything you like, then tap "Save Message". You can delete it any time from the Browse tab.</div>
     </div>
 
     <div class="card">
@@ -279,6 +282,92 @@ textarea{resize:vertical;}
         <button class="save" onclick="saveMessage()">Save Message</button>
         <button class="clear" onclick="resetEditor()">New / Clear Form</button>
       </div>
+    </div>
+  </section>
+
+  <!-- ===== AI CREATOR TAB ===== -->
+  <section id="tab-aicreator" class="hidden pastor-only">
+    <div class="card">
+      <div class="section-title">AI Creator (Gemini)</div>
+      <div class="hint">Generates a complete "My Daily Words" entry &mdash; every labelled field (Focus, Scripture, Personalised, My Daily Words, Prayer Point, Speak the Words, Call Forth, Grace, What do I see?, Thank God) &mdash; from a topic you give it. Nothing is saved anywhere until you choose to.</div>
+
+      <label class="f">Gemini API Key (stored on this device only, never synced)</label>
+      <input type="password" id="ai_geminiKey" placeholder="Paste your Gemini API key" onchange="saveGeminiKeyFromUI()">
+
+      <label class="f">Gemini Model</label>
+      <select id="ai_model">
+        <option value="gemini-3.5-flash">3.5 Flash</option>
+        <option value="gemini-3.5-flash-lite">3.5 Flash Lite</option>
+        <option value="gemini-3.6-flash">3.6 Flash</option>
+        <option value="gemini-3.7-flash">3.7 Flash</option>
+        <option value="gemini-3.8-flash" selected>3.8 Flash</option>
+      </select>
+
+      <label class="f">Topic / Identity Truth</label>
+      <input type="text" id="ai_topic" placeholder="e.g. Iam A Warrior, Iam Complete In Christ...">
+
+      <label class="f">Extra Instructions (optional)</label>
+      <textarea id="ai_instructions" rows="2" placeholder="Any tone, scripture preference, or angle you want emphasised"></textarea>
+
+      <div class="btnRow">
+        <button class="save" onclick="generateWithGemini()">Generate</button>
+        <button class="clear" onclick="clearAIForm()">Clear</button>
+      </div>
+      <div id="aiStatus" class="hint"></div>
+    </div>
+
+    <div class="card" id="aiPreviewCard" style="display:none;">
+      <div class="section-title">Generated Entry (Review &amp; Edit)</div>
+
+      <label class="f">Focus</label>
+      <input type="text" id="ai_focus">
+
+      <label class="f">Scripture Reference</label>
+      <input type="text" id="ai_scriptureRef">
+
+      <label class="f">Bible Version</label>
+      <select id="ai_version"></select>
+
+      <label class="f">Scripture Text</label>
+      <textarea id="ai_scriptureText" rows="3"></textarea>
+
+      <label class="f">Personalised</label>
+      <textarea id="ai_personalised" rows="3"></textarea>
+
+      <label class="f">My Daily Words</label>
+      <textarea id="ai_dailyWords" rows="6"></textarea>
+
+      <label class="f">Prayer Point</label>
+      <textarea id="ai_prayerPoint" rows="2"></textarea>
+
+      <label class="f">Speak the Words</label>
+      <textarea id="ai_speakWords" rows="2"></textarea>
+
+      <label class="f">Call Forth</label>
+      <textarea id="ai_callForth" rows="2"></textarea>
+
+      <label class="f">Grace</label>
+      <textarea id="ai_grace" rows="2"></textarea>
+
+      <label class="f">What do I see?</label>
+      <textarea id="ai_whatDoISee" rows="2"></textarea>
+
+      <label class="f">Thank God</label>
+      <textarea id="ai_thankGod" rows="2"></textarea>
+
+      <div class="btnRow">
+        <button class="save" onclick="saveAIResultToBank()">Save to Storage Bank</button>
+        <button class="save" style="background:var(--blue2)" onclick="loadAIResultIntoEditor()">Load Into Editor Now</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Storage Bank <span id="bankCountLabel" class="badge">0</span></div>
+      <div class="hint">Unlimited on-device storage (up to 10GB, browser-permitting) for AI-generated topics you haven't scheduled yet. Nothing here is synced or shown to members until you Load it and Save it as a scheduled message.</div>
+      <div class="btnRow" style="margin-top:0;">
+        <button class="cancel" onclick="clearAllBankItems()">Clear All</button>
+      </div>
+      <div id="bankListArea" style="margin-top:10px;"></div>
     </div>
   </section>
 
@@ -338,6 +427,12 @@ textarea{resize:vertical;}
       <div class="btnRow">
         <button class="cancel" onclick="clearAllMessages()">Clear All Messages</button>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Identity Topics Library</div>
+      <div class="hint">Loads all 27 daily topics (the 6 original messages plus the 21 "Christ Is My Identity" topics) into this device, dated from 1 January 2027 onward. Safe to press any time &mdash; it will never overwrite or duplicate a topic you already have.</div>
+      <div class="btnRow"><button class="save" onclick="loadTopicsButtonClick()">Load 27 Identity Topics</button></div>
     </div>
 
     <div class="card">
@@ -410,6 +505,7 @@ function initApp(){
   renderToday();
   renderList();
   renderSettingsUI();
+  loadGeminiKeyToUI();
   if(settings.syncEnabled){ initFirebase(); }
 }
 
@@ -450,7 +546,7 @@ function bindTabs(){
 }
 function openTab(tab){
   if(!pastorMode){ tab = 'today'; } // members can only ever see Today
-  var sections = ['today','browse','editor','settings'];
+  var sections = ['today','browse','editor','aicreator','settings'];
   for(var i=0;i<sections.length;i++){
     var el = document.getElementById('tab-'+sections[i]);
     if(sections[i]===tab){ el.classList.remove('hidden'); } else { el.classList.add('hidden'); }
@@ -461,6 +557,7 @@ function openTab(tab){
   }
   if(tab==='today'){ renderToday(); }
   if(tab==='browse'){ renderList(); }
+  if(tab==='aicreator'){ renderBankList(); }
 }
 
 /* ---------------- PASTOR / MEMBER MODE ---------------- */
@@ -570,7 +667,7 @@ function toggleSync(){
 }
 
 function populateVersionSelects(){
-  var sels = [document.getElementById('f_version'), document.getElementById('s_defaultVersion')];
+  var sels = [document.getElementById('f_version'), document.getElementById('s_defaultVersion'), document.getElementById('ai_version')];
   for(var s=0;s<sels.length;s++){
     sels[s].innerHTML='';
     for(var i=0;i<BIBLE_VERSIONS.length;i++){
@@ -582,6 +679,7 @@ function populateVersionSelects(){
   }
   document.getElementById('f_version').value = settings.defaultVersion;
   document.getElementById('s_defaultVersion').value = settings.defaultVersion;
+  document.getElementById('ai_version').value = settings.defaultVersion;
 }
 
 /* ---------------- FIREBASE SYNC ---------------- */
@@ -665,9 +763,7 @@ function newId(){
   return 'mdw_'+Date.now()+'_'+Math.floor(Math.random()*10000);
 }
 
-function seedIfEmpty(){
-  if(messages.length>0) return;
-  var base = new Date(2027,0,1); // fixed start date: 1 January 2027
+function getFullSeedLibrary(){
   var seed = [
     {focus:"Iam A King",scriptureRef:"Revelation 5:10",version:"KJV",scriptureText:"And has made us unto our God Kings and Priest, and we shall reign on the earth.",personalised:"And has made me unto my God Kings and Priest, and I shall rule on the earth",dailyWords:"In Christ, Iam a King and thus who Iam. I am in the kingdom of heaven and I have dominion. Iam an Eagle in the air as the King of the birds and Iam a lion in the land as the King of the beasts. I have eyes of an Eagle to see beyond in the realm of the spirit and I roar as a lion in the realm of prayer. I am bold as a king on the throne of God. I have wisdom more than the wisdom of Solomon because Iam greater than Solomon (Matthew 12:42). I rule on the earth, all things are under my feet (Psalm 8:6) and Iam in charge.",prayerPoint:"Heavenly Father, lift me as a king and as a Priest in my life, in the name of Jesus.",speakWords:"I Speak Kingship and Priesthood in my life.",callForth:"I call forth Kingship and Priesthood to manifest in my life now!!!",grace:"I have received the grace of Kingship and Priesthood in my life",whatDoISee:"I see Kingship and Priesthood in my life.",thankGod:"Father I thank you for making me a king and Priest in my generation"},
     {focus:"Iam Above All",scriptureRef:"John 3:31",version:"NKJV",scriptureText:"He who comes from above is above all; he who is of the earth is earthly and speaks of the earth. He who comes from heaven is above all.",personalised:"",dailyWords:"Jesus who is above all things lives in me (Galatians 2:20) and makes me to be above all things. Iam above all and all things are under my feet (Psalm 8:6) because I have set my mind on things of the above, the heavenly things (Colossians 3:2). I have all power from the day I received Christ (John 1:12), I received all power and I have the spirit of power (2Timothy 1:7). Greater is He that is in me (1 John 4:4) and I am more than a conqueror (Romans 8:37). I rejoice because I have overcome the world through Christ (John 16:33)",prayerPoint:"Heavenly Father, lift me above all things in my life, in the name of Jesus.",speakWords:"I speak grace to be above all things in my life.",callForth:"I call forth grace of above all things to manifest in my life now!!!",grace:"I have received the grace to be above all things.",whatDoISee:"I see myself above all things in my generation",thankGod:"Father I thank you for making me above all things."},
@@ -697,21 +793,77 @@ function seedIfEmpty(){
     {focus:"Iam An Eagle In Christ",scriptureRef:"Isaiah 40:31",version:"NKJV",scriptureText:"But those who wait on the Lord shall renew their strength; They shall mount up with wings like eagles, They shall run and not be weary, They shall walk and not faint.",personalised:"Because I wait on the Lord, I renew my strength. I mount up with wings like an eagle; I run and I am not weary; I walk and I do not faint.",dailyWords:"I am an eagle in Christ. I am not a chicken made to live low on the ground; I am made to soar high in the sky of the Spirit. Like the eagle raised among chickens that lived like a chicken until it saw another eagle fly and remembered who it truly was, I refuse to keep living beneath my true identity. Eagles fly high, and so do I - I am not made to live low in sin, fear, and defeat, but to mount up with wings as an eagle and soar in the Spirit. Eagles have strong vision, and I carry spiritual vision too; I see what God sees, I am not blind to His truth or His plans for me. Eagles run without growing weary, and I carry new strength in Christ that does not run out. Like the eagle whose youth is renewed, my strength is renewed in Him. Like the eagle that God hovers over and carries on His wings, I know God carries me through every season. And like the eagle that flies above the storm instead of hiding from it, I fly above every storm that tries to rise against me. I stop living like a chicken. I think high thoughts, I wait on the Lord for fresh strength, I see my life from God's perspective, I soar above my problems instead of living beneath them, and I renew my strength daily through prayer and the Word.",prayerPoint:"Father, thank You for making me an eagle in Christ. Renew my strength daily as I wait on You.",speakWords:"I speak this: I am an eagle in Christ, and I soar above every storm.",callForth:"I call forth eagle-strength and eagle-vision to manifest fully in my life now!!!",grace:"I have received the grace to rise above every storm and every weariness.",whatDoISee:"I see myself soaring high above every circumstance that tries to weigh me down.",thankGod:"Father, I thank You for renewing my strength like the eagle's, again and again."},
     {focus:"Iam Defined By God",scriptureRef:"Isaiah 43:1",version:"NKJV",scriptureText:"But now, thus says the Lord, who created you, O Jacob, And He who formed you, O Israel: Fear not, for I have redeemed you; I have called you by your name; You are Mine.",personalised:"But now, thus says the Lord who created me and formed me: Fear not, for I have redeemed you; I have called you by your name; you are Mine.",dailyWords:"I am defined by God, not by people, not by my past, not by my failures, and not by my circumstances. The world will try to define me - my family may try to define me by my past, society may try to define me by my education, my money, or my background, and the enemy will try to define me by my weaknesses. But only God has the right to define me, and here is what He says: He knew me before I was formed in the womb; He knew me before anyone else ever did. He has called me by my own name - I am not a number to Him, He knows exactly who I am. I am fearfully and wonderfully made, not a mistake, but made with care and purpose. I am part of His own special people, a chosen generation, a royal priesthood, a holy nation, belonging to Him specially. My identity is not built on what I do; it is built entirely on what God says about me. When I let God define me, I become truly free - I no longer chase people's approval, I no longer fear their rejection, because I already know who I am. I refuse every other definition. When people call me a failure, poor, or useless, I answer: I am defined by God, not by you. I listen to God's Word daily, because His Word is His definition of me. I know I am wonderfully made, I refuse to hate myself, and I live from God's unchanging definition, not from my changing feelings, speaking what God says about me every single day.",prayerPoint:"Father, thank You for defining me by Your Word. Let me never accept a definition from anyone else again.",speakWords:"I speak this: I am defined by God alone, known, called, and wonderfully made.",callForth:"I call forth the fullness of my true identity in God to manifest completely now!!!",grace:"I have received the grace to live from God's definition of me, not from people's opinions.",whatDoISee:"I see myself free from every wrong label, standing secure in who God says I am.",thankGod:"Father, I thank You for knowing me, calling me by name, and defining who I truly am."}
   ];
+  return seed;
+}
+
+function seedIfEmpty(){
+  if(messages.length>0) return;
+  loadFullSeedLibrary(false);
+}
+
+/* Loads the 27-topic starter library (6 original + 21 "Christ Is My Identity" topics).
+   Dates always start 1 Jan 2027 and run forward one day per topic.
+   If skipExisting is true (used by the manual "Load Topics" button), any topic whose
+   focus title already exists in messages (case-insensitive) is left untouched, so
+   nothing you have already written or edited is ever overwritten or duplicated. */
+function loadFullSeedLibrary(skipExisting){
+  var seed = getFullSeedLibrary();
+  var base = new Date(2027,0,1); // fixed start date: 1 January 2027
+  var existingFocus = {};
+  if(skipExisting){
+    for(var k=0;k<messages.length;k++){
+      existingFocus[String(messages[k].focus||'').trim().toLowerCase()] = true;
+    }
+  }
+  var addedCount = 0;
+  var usedDates = {};
+  for(var j=0;j<messages.length;j++){ usedDates[messages[j].date] = true; }
+
   for(var i=0;i<seed.length;i++){
+    var obj = seed[i];
+    var key = String(obj.focus||'').trim().toLowerCase();
+    if(skipExisting && existingFocus[key]) continue;
+
     var d = new Date(base.getTime());
     d.setDate(base.getDate()+i);
     var m = ('0'+(d.getMonth()+1)).slice(-2);
     var day = ('0'+d.getDate()).slice(-2);
     var dateStr = d.getFullYear()+'-'+m+'-'+day;
-    var obj = seed[i];
-    obj.id = newId();
-    obj.date = dateStr;
-    obj.status = 'scheduled';
-    obj.createdAt = Date.now()+i;
-    obj.updatedAt = Date.now()+i;
-    messages.push(obj);
+    // avoid landing two topics on the same date when re-importing into an existing library
+    while(usedDates[dateStr]){
+      d.setDate(d.getDate()+1);
+      var m2 = ('0'+(d.getMonth()+1)).slice(-2);
+      var day2 = ('0'+d.getDate()).slice(-2);
+      dateStr = d.getFullYear()+'-'+m2+'-'+day2;
+    }
+    usedDates[dateStr] = true;
+
+    var newObj = {
+      focus:obj.focus, scriptureRef:obj.scriptureRef, version:obj.version,
+      scriptureText:obj.scriptureText, personalised:obj.personalised,
+      dailyWords:obj.dailyWords, prayerPoint:obj.prayerPoint, speakWords:obj.speakWords,
+      callForth:obj.callForth, grace:obj.grace, whatDoISee:obj.whatDoISee, thankGod:obj.thankGod
+    };
+    newObj.id = newId();
+    newObj.date = dateStr;
+    newObj.status = 'scheduled';
+    newObj.createdAt = Date.now()+i;
+    newObj.updatedAt = Date.now()+i;
+    messages.push(newObj);
+    addedCount++;
   }
   saveMessagesToStorage();
+  return addedCount;
+}
+
+function loadTopicsButtonClick(){
+  var added = loadFullSeedLibrary(true);
+  renderToday(); renderList(); renderSettingsUI();
+  if(added>0){
+    alert(added+' topic(s) loaded into My Daily Words, starting from 1 January 2027.');
+  } else {
+    alert('All 27 topics are already in your library. Nothing new to add.');
+  }
 }
 
 /* ---------------- EDITOR ---------------- */
@@ -807,9 +959,10 @@ function clearAllMessages(){
 }
 
 /* ---------------- PASTE AUTO-FILL ---------------- */
-function autoFillFromPaste(){
-  var text = document.getElementById('pasteArea').value;
-  if(!text.trim()){ alert('Paste some text first.'); return; }
+/* Shared label-detection: scans text for the field labels used throughout
+   this app (Focus:, Scripture:, My Daily Words:, Prayer Point:, etc.) and
+   returns whatever it finds as a plain object keyed by field name. */
+function parseLabeledText(text){
   var labels = [
     {key:'focus', pats:['focus']},
     {key:'scriptureRef', pats:['scripture']},
@@ -841,6 +994,10 @@ function autoFillFromPaste(){
     val = val.replace(/^\*+|\*+$/g,'').trim();
     if(!result[found[k].key]) result[found[k].key] = val;
   }
+  return result;
+}
+
+function applyParsedResultToForm(result){
   if(result.focus) document.getElementById('f_focus').value = result.focus;
   if(result.scriptureRef){
     // scripture ref line may include the verse text after it; try to split off pure reference
@@ -856,7 +1013,53 @@ function autoFillFromPaste(){
   if(result.grace) document.getElementById('f_grace').value = result.grace;
   if(result.whatDoISee) document.getElementById('f_whatDoISee').value = result.whatDoISee;
   if(result.thankGod) document.getElementById('f_thankGod').value = result.thankGod;
+}
+
+function autoFillFromPaste(){
+  var text = document.getElementById('pasteArea').value;
+  if(!text.trim()){ alert('Paste some text first.'); return; }
+  var result = parseLabeledText(text);
+  applyParsedResultToForm(result);
   alert('Fields auto-filled where labels were recognised. Please review before saving.');
+}
+
+/* ---------------- PASTE VERBATIM (LOAD AS NEW TOPIC) ---------------- */
+function loadVerbatimAsNewTopic(){
+  var text = document.getElementById('pasteArea').value;
+  if(!text.trim()){ alert('Paste some text first.'); return; }
+
+  resetEditor(); // start a brand-new, unsaved entry
+
+  var result = parseLabeledText(text);
+  var labelCount = 0;
+  for(var key in result){ if(result.hasOwnProperty(key)) labelCount++; }
+
+  if(labelCount>0){
+    // Labels were recognised: split the paste into its proper fields, same as Auto-Fill.
+    applyParsedResultToForm(result);
+    if(!result.focus){
+      // No explicit Focus: label found, so fall back to the first non-empty line as the title.
+      var lines = text.split('\n');
+      var titleLine = '';
+      for(var i=0;i<lines.length;i++){
+        if(lines[i].trim()){ titleLine = lines[i].trim(); break; }
+      }
+      if(titleLine.length>80) titleLine = titleLine.substring(0,80);
+      document.getElementById('f_focus').value = titleLine;
+    }
+    alert('Text loaded as a new topic and split into fields where labels were recognised. Review everything, then tap "Save Message" when ready.');
+  } else {
+    // No labels found at all: drop the entire paste, verbatim, into My Daily Words.
+    var lines2 = text.split('\n');
+    var titleLine2 = '';
+    for(var j=0;j<lines2.length;j++){
+      if(lines2[j].trim()){ titleLine2 = lines2[j].trim(); break; }
+    }
+    if(titleLine2.length>80) titleLine2 = titleLine2.substring(0,80);
+    document.getElementById('f_focus').value = titleLine2;
+    document.getElementById('f_dailyWords').value = text.trim();
+    alert('No field labels were recognised, so the text was loaded verbatim into My Daily Words as a new topic. Review the Focus title and any other fields, then tap "Save Message" when ready.');
+  }
 }
 
 /* ---------------- RENDERING: WORD CARD ---------------- */
@@ -1124,6 +1327,336 @@ function downloadStandaloneHTML(id){
     '.photo img{width:100%;height:100%;object-fit:cover;}'+
     '</style></head><body>'+cardHtml+'</body></html>';
   downloadBlob('MyDailyWords_'+m.date+'_'+slug(m.focus)+'_standalone.html', doc, 'text/html');
+}
+
+/* ---------------- GEMINI API KEY (device-local only, never synced) ---------------- */
+var LS_GEMINI_KEY = 'mdw_gemini_key_v1';
+function loadGeminiKeyToUI(){
+  var k = localStorage.getItem(LS_GEMINI_KEY) || '';
+  var el = document.getElementById('ai_geminiKey');
+  if(el) el.value = k;
+}
+function saveGeminiKeyFromUI(){
+  var v = document.getElementById('ai_geminiKey').value.trim();
+  localStorage.setItem(LS_GEMINI_KEY, v);
+}
+
+/* ---------------- AI CREATOR (GEMINI) ---------------- */
+function clearAIForm(){
+  document.getElementById('ai_topic').value='';
+  document.getElementById('ai_instructions').value='';
+  document.getElementById('aiStatus').textContent='';
+  document.getElementById('aiPreviewCard').style.display='none';
+}
+
+function buildGeminiPrompt(topic, instructions){
+  var p = '';
+  p += 'You are writing one entry for a Christian daily confession app called "My Daily Words". ';
+  p += 'The voice must be first-person self-declaration, as if the reader is speaking truth to themselves ';
+  p += '("I am...", "I have...", "I refuse...") - never second-person ("you are"), never addressed to someone else. ';
+  p += 'The topic/identity-truth for this entry is: "' + topic + '". ';
+  if(instructions){ p += 'Additional instructions: ' + instructions + ' '; }
+  p += 'Respond with ONLY a single valid JSON object, no markdown, no code fences, no commentary, ';
+  p += 'with exactly these keys (all string values): ';
+  p += 'focus (short title, a few words, first person e.g. "Iam A Warrior"), ';
+  p += 'scriptureRef (e.g. "Ephesians 6:10"), ';
+  p += 'version (one of KJV, NKJV, NIV, NLT, AMPLIFIED, ERV, ESV), ';
+  p += 'scriptureText (the verse text in that version), ';
+  p += 'personalised (the same verse re-worded into first-person "I" language), ';
+  p += 'dailyWords (a full first-person devotional confession, 150-250 words, grounded in scripture), ';
+  p += 'prayerPoint (one short first-person prayer sentence), ';
+  p += 'speakWords (one short first-person declaration sentence), ';
+  p += 'callForth (one sentence starting "I call forth" and ending "now!!!"), ';
+  p += 'grace (one sentence starting "I have received the grace of"), ';
+  p += 'whatDoISee (one sentence starting "I see"), ';
+  p += 'thankGod (one short first-person thanksgiving sentence to the Father).';
+  return p;
+}
+
+function setAIStatus(msg){
+  var el = document.getElementById('aiStatus');
+  if(el) el.textContent = msg;
+}
+
+function generateWithGemini(){
+  var key = document.getElementById('ai_geminiKey').value.trim();
+  var model = document.getElementById('ai_model').value;
+  var topic = document.getElementById('ai_topic').value.trim();
+  var instructions = document.getElementById('ai_instructions').value.trim();
+
+  if(!key){ alert('Please paste your Gemini API key first.'); return; }
+  if(!topic){ alert('Please enter a topic or identity truth to generate.'); return; }
+
+  setAIStatus('Generating with '+model+' ... please wait.');
+  document.getElementById('aiPreviewCard').style.display='none';
+
+  var prompt = buildGeminiPrompt(topic, instructions);
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key);
+  var body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json' }
+  };
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function(res){
+    return res.json();
+  }).then(function(data){
+    var text = '';
+    try{
+      text = data.candidates[0].content.parts[0].text;
+    }catch(e){
+      var apiMsg = (data && data.error && data.error.message) ? data.error.message : 'Unexpected response from Gemini.';
+      setAIStatus('');
+      alert('Gemini did not return usable content: '+apiMsg);
+      return;
+    }
+    // Strip accidental markdown code fences just in case
+    text = text.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+    var parsed;
+    try{
+      parsed = JSON.parse(text);
+    }catch(e){
+      setAIStatus('');
+      alert('Gemini returned content that could not be read as JSON. Please try again.');
+      return;
+    }
+    fillAIPreview(parsed);
+    setAIStatus('Generated. Review the fields below, then Save to Storage Bank or Load Into Editor.');
+  }).catch(function(err){
+    setAIStatus('');
+    alert('Gemini request failed: '+(err && err.message ? err.message : err));
+  });
+}
+
+function fillAIPreview(p){
+  p = p || {};
+  document.getElementById('ai_focus').value = p.focus||'';
+  document.getElementById('ai_scriptureRef').value = p.scriptureRef||'';
+  document.getElementById('ai_version').value = p.version||settings.defaultVersion;
+  document.getElementById('ai_scriptureText').value = p.scriptureText||'';
+  document.getElementById('ai_personalised').value = p.personalised||'';
+  document.getElementById('ai_dailyWords').value = p.dailyWords||'';
+  document.getElementById('ai_prayerPoint').value = p.prayerPoint||'';
+  document.getElementById('ai_speakWords').value = p.speakWords||'';
+  document.getElementById('ai_callForth').value = p.callForth||'';
+  document.getElementById('ai_grace').value = p.grace||'';
+  document.getElementById('ai_whatDoISee').value = p.whatDoISee||'';
+  document.getElementById('ai_thankGod').value = p.thankGod||'';
+  document.getElementById('aiPreviewCard').style.display='';
+}
+
+function readAIPreviewFields(){
+  return {
+    focus: document.getElementById('ai_focus').value.trim(),
+    scriptureRef: document.getElementById('ai_scriptureRef').value.trim(),
+    version: document.getElementById('ai_version').value,
+    scriptureText: document.getElementById('ai_scriptureText').value.trim(),
+    personalised: document.getElementById('ai_personalised').value.trim(),
+    dailyWords: document.getElementById('ai_dailyWords').value.trim(),
+    prayerPoint: document.getElementById('ai_prayerPoint').value.trim(),
+    speakWords: document.getElementById('ai_speakWords').value.trim(),
+    callForth: document.getElementById('ai_callForth').value.trim(),
+    grace: document.getElementById('ai_grace').value.trim(),
+    whatDoISee: document.getElementById('ai_whatDoISee').value.trim(),
+    thankGod: document.getElementById('ai_thankGod').value.trim()
+  };
+}
+
+function loadAIResultIntoEditor(){
+  var f = readAIPreviewFields();
+  if(!f.focus){ alert('Please enter a Focus title before loading into the editor.'); return; }
+  resetEditor();
+  document.getElementById('f_focus').value = f.focus;
+  document.getElementById('f_scriptureRef').value = f.scriptureRef;
+  document.getElementById('f_version').value = f.version;
+  document.getElementById('f_scriptureText').value = f.scriptureText;
+  document.getElementById('f_personalised').value = f.personalised;
+  document.getElementById('f_dailyWords').value = f.dailyWords;
+  document.getElementById('f_prayerPoint').value = f.prayerPoint;
+  document.getElementById('f_speakWords').value = f.speakWords;
+  document.getElementById('f_callForth').value = f.callForth;
+  document.getElementById('f_grace').value = f.grace;
+  document.getElementById('f_whatDoISee').value = f.whatDoISee;
+  document.getElementById('f_thankGod').value = f.thankGod;
+  openTab('editor');
+}
+
+/* ---------------- STORAGE BANK (IndexedDB, on-device, effectively unlimited up to browser quota) ---------------- */
+var BANK_DB_NAME = 'MDW_AICreatorBankDB';
+var BANK_DB_VERSION = 1;
+var BANK_STORE_NAME = 'bankItems';
+var bankDbInstance = null;
+
+function openBankDB(callback){
+  if(bankDbInstance){ callback(bankDbInstance); return; }
+  if(!window.indexedDB){ alert('This browser does not support on-device storage for the Storage Bank.'); callback(null); return; }
+  var req = indexedDB.open(BANK_DB_NAME, BANK_DB_VERSION);
+  req.onupgradeneeded = function(e){
+    var db = e.target.result;
+    if(!db.objectStoreNames.contains(BANK_STORE_NAME)){
+      db.createObjectStore(BANK_STORE_NAME, { keyPath: 'id' });
+    }
+  };
+  req.onsuccess = function(e){
+    bankDbInstance = e.target.result;
+    callback(bankDbInstance);
+  };
+  req.onerror = function(e){
+    alert('Could not open the Storage Bank on this device.');
+    callback(null);
+  };
+}
+
+function bankSaveItem(item, callback){
+  openBankDB(function(db){
+    if(!db){ if(callback) callback(false); return; }
+    var tx = db.transaction([BANK_STORE_NAME], 'readwrite');
+    var store = tx.objectStore(BANK_STORE_NAME);
+    store.put(item);
+    tx.oncomplete = function(){ if(callback) callback(true); };
+    tx.onerror = function(){ if(callback) callback(false); };
+  });
+}
+
+function bankGetAll(callback){
+  openBankDB(function(db){
+    if(!db){ callback([]); return; }
+    var tx = db.transaction([BANK_STORE_NAME], 'readonly');
+    var store = tx.objectStore(BANK_STORE_NAME);
+    var req = store.getAll ? store.getAll() : null;
+    if(req){
+      req.onsuccess = function(){ callback(req.result || []); };
+      req.onerror = function(){ callback([]); };
+    } else {
+      // Fallback for browsers without getAll(): use a cursor
+      var items = [];
+      var curReq = store.openCursor();
+      curReq.onsuccess = function(e){
+        var cursor = e.target.result;
+        if(cursor){ items.push(cursor.value); cursor.continue(); } else { callback(items); }
+      };
+      curReq.onerror = function(){ callback([]); };
+    }
+  });
+}
+
+function bankDeleteItem(id, callback){
+  openBankDB(function(db){
+    if(!db){ if(callback) callback(false); return; }
+    var tx = db.transaction([BANK_STORE_NAME], 'readwrite');
+    tx.objectStore(BANK_STORE_NAME)['delete'](id);
+    tx.oncomplete = function(){ if(callback) callback(true); };
+    tx.onerror = function(){ if(callback) callback(false); };
+  });
+}
+
+function bankClearAll(callback){
+  openBankDB(function(db){
+    if(!db){ if(callback) callback(false); return; }
+    var tx = db.transaction([BANK_STORE_NAME], 'readwrite');
+    tx.objectStore(BANK_STORE_NAME).clear();
+    tx.oncomplete = function(){ if(callback) callback(true); };
+    tx.onerror = function(){ if(callback) callback(false); };
+  });
+}
+
+function saveAIResultToBank(){
+  var f = readAIPreviewFields();
+  if(!f.focus){ alert('Please enter a Focus title before saving to the Storage Bank.'); return; }
+  f.id = 'bank_'+Date.now()+'_'+Math.floor(Math.random()*10000);
+  f.createdAt = Date.now();
+  bankSaveItem(f, function(ok){
+    if(ok){
+      alert('Saved to Storage Bank.');
+      renderBankList();
+    } else {
+      alert('Could not save to the Storage Bank on this device.');
+    }
+  });
+}
+
+function bankItemToPlainText(item){
+  var lines = [];
+  lines.push('Focus: '+item.focus);
+  if(item.scriptureRef) lines.push('Scripture ('+item.version+'): '+item.scriptureRef + (item.scriptureText? ' - '+item.scriptureText:''));
+  if(item.personalised) lines.push('Personalised: '+item.personalised);
+  if(item.dailyWords) lines.push('\nMy Daily Words:\n'+item.dailyWords);
+  if(item.prayerPoint) lines.push('\nPrayer Point: '+item.prayerPoint);
+  if(item.speakWords) lines.push('Speak the Words: '+item.speakWords);
+  if(item.callForth) lines.push('Call Forth: '+item.callForth);
+  if(item.grace) lines.push('Grace: '+item.grace);
+  if(item.whatDoISee) lines.push('What do I see?: '+item.whatDoISee);
+  if(item.thankGod) lines.push('Thank God: '+item.thankGod);
+  return lines.join('\n');
+}
+
+function renderBankList(){
+  bankGetAll(function(items){
+    items.sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+    var area = document.getElementById('bankListArea');
+    var countLabel = document.getElementById('bankCountLabel');
+    if(countLabel) countLabel.textContent = items.length;
+    if(!area) return;
+    area.innerHTML='';
+    if(items.length===0){ area.innerHTML = '<div class="emptyState">Storage Bank is empty.</div>'; return; }
+    for(var i=0;i<items.length;i++){
+      var it = items[i];
+      var div = document.createElement('div');
+      div.className='listItem';
+      var when = it.createdAt ? new Date(it.createdAt).toLocaleString() : '';
+      div.innerHTML =
+        '<div class="li-main" onclick="toggleBankPreview(\''+it.id+'\')"><div class="li-date">'+escapeHtml(when)+'</div><div class="li-title">'+escapeHtml(it.focus)+'</div></div>'+
+        '<div class="li-btns"><button onclick="toggleBankPreview(\''+it.id+'\')">Preview</button><button onclick="loadFromBank(\''+it.id+'\')">Load</button><button onclick="deleteBankItem(\''+it.id+'\')">Delete</button></div>'+
+        '<div class="hint bankPreviewBlock" id="bankPreview_'+it.id+'" style="display:none;white-space:pre-wrap;margin-top:8px;">'+escapeHtml(bankItemToPlainText(it))+'</div>';
+      area.appendChild(div);
+    }
+  });
+}
+
+function toggleBankPreview(id){
+  var el = document.getElementById('bankPreview_'+id);
+  if(!el) return;
+  el.style.display = (el.style.display==='none') ? 'block' : 'none';
+}
+
+function loadFromBank(id){
+  bankGetAll(function(items){
+    var found = null;
+    for(var i=0;i<items.length;i++){ if(items[i].id===id){ found=items[i]; break; } }
+    if(!found){ alert('Item not found in Storage Bank.'); return; }
+    resetEditor();
+    document.getElementById('f_focus').value = found.focus||'';
+    document.getElementById('f_scriptureRef').value = found.scriptureRef||'';
+    document.getElementById('f_version').value = found.version||settings.defaultVersion;
+    document.getElementById('f_scriptureText').value = found.scriptureText||'';
+    document.getElementById('f_personalised').value = found.personalised||'';
+    document.getElementById('f_dailyWords').value = found.dailyWords||'';
+    document.getElementById('f_prayerPoint').value = found.prayerPoint||'';
+    document.getElementById('f_speakWords').value = found.speakWords||'';
+    document.getElementById('f_callForth').value = found.callForth||'';
+    document.getElementById('f_grace').value = found.grace||'';
+    document.getElementById('f_whatDoISee').value = found.whatDoISee||'';
+    document.getElementById('f_thankGod').value = found.thankGod||'';
+    openTab('editor');
+  });
+}
+
+function deleteBankItem(id){
+  if(!confirm('Delete this item from the Storage Bank permanently?')) return;
+  bankDeleteItem(id, function(ok){
+    if(ok){ renderBankList(); } else { alert('Could not delete this item.'); }
+  });
+}
+
+function clearAllBankItems(){
+  if(!confirm('This will delete ALL items in the Storage Bank on this device. Continue?')) return;
+  if(!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  bankClearAll(function(ok){
+    if(ok){ renderBankList(); } else { alert('Could not clear the Storage Bank.'); }
+  });
 }
 
 /* ---------------- START ---------------- */
