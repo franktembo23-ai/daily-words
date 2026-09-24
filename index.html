@@ -695,9 +695,17 @@ var fbBusy = false, fbLastMeta = null, fbFullDone = false, fbDirty = false, fbTi
 function fbFetch(url, opts, ms){
   return new Promise(function(resolve, reject){
     var done = false;
-    var t = setTimeout(function(){ if(!done){ done = true; reject(new Error('timeout')); } }, ms || 15000);
+    var t = setTimeout(function(){ if(!done){ done = true; var e = new Error('timeout'); e.timeout = true; reject(e); } }, ms || 15000);
     fetch(url, opts).then(function(r){ if(done) return; done = true; clearTimeout(t); resolve(r); },
-                          function(e){ if(done) return; done = true; clearTimeout(t); reject(e); });
+                          function(e){
+                            if(done) return; done = true; clearTimeout(t);
+                            // A native fetch rejection (as opposed to a timeout or an HTTP
+                            // error status) almost always means the browser could not even
+                            // reach the address - blocked by a firewall/DNS/ad-blocker, or
+                            // the request never left the page (a CORS problem).
+                            var e2 = new Error((e && e.message) || 'network'); e2.network = true;
+                            reject(e2);
+                          });
   });
 }
 function fbLoadAuth(){
@@ -746,31 +754,47 @@ function fbReq(method, path, body, retried){
     return fbFetch(FB_DB + '/' + path + '.json?auth=' + encodeURIComponent(fbToken), opts, 20000);
   }).then(function(r){
     if(r.status === 401 && !retried){ fbToken = ''; fbTokenExp = 0; return fbReq(method, path, body, true); }
-    if(!r.ok){ var e = new Error('HTTP '+r.status); e.status = r.status; throw e; }
+    if(!r.ok){
+      return r.text().then(function(t){
+        var e = new Error('HTTP '+r.status+(t ? ': '+t.slice(0,200) : ''));
+        e.status = r.status; e.body = t; throw e;
+      }, function(){ var e = new Error('HTTP '+r.status); e.status = r.status; throw e; });
+    }
     return r.json();
   });
 }
 function fbErrLabel(e){
   if(e && e.auth){ return 'Sign-in blocked - enable Anonymous sign-in'; }
   if(e && e.status === 401){ return 'Sync blocked - check Firebase rules'; }
+  if(e && e.status === 404){ return 'Sync blocked - wrong database address'; }
+  if(e && e.network){ return 'Sync blocked - request could not connect'; }
+  if(e && e.timeout){ return 'Offline - will retry'; }
   return 'Offline - will retry';
 }
 function fbErrText(e){
-  if(e && e.auth){ return 'Firebase refused the anonymous sign-in ('+e.message+'). In the Firebase console open Authentication > Sign-in method, and make sure "Anonymous" is enabled.'; }
-  if(e && e.status === 401){ return 'Firebase rejected the request. Check the Realtime Database rules for my-daily-words-9060a.'; }
-  return 'Could not reach the sync database. Check the internet connection and try again.';
+  var detail = 'Details: ' + (e && e.message ? e.message : String(e)) + '.';
+  if(e && e.auth){ return 'Firebase refused the anonymous sign-in. In the Firebase console open Authentication > Sign-in method, and make sure "Anonymous" is enabled. '+detail; }
+  if(e && e.status === 401){ return 'Firebase rejected the request. Check the Realtime Database rules for my-daily-words-9060a. '+detail; }
+  if(e && e.status === 404){ return 'The database address the app is using does not match this Firebase project. In the Firebase console open Realtime Database and compare its URL to the one built into the app (https://my-daily-words-9060a-default-rtdb.firebaseio.com). '+detail; }
+  if(e && e.status){ return 'Firebase returned an error. '+detail; }
+  if(e && e.network){ return 'The request to Firebase could not connect at all - this points to a firewall, VPN, DNS setting, or a browser/ad-block extension blocking google APIs on this device or network, not a Firebase setting. Try a different network (e.g. mobile data) or a different browser to confirm. '+detail; }
+  if(e && e.timeout){ return 'The request to Firebase took too long and was cancelled. The connection may be slow or intermittent right now. '+detail; }
+  return 'Could not reach the sync database. '+detail;
 }
 
-function initFirebase(){
-  setSyncStatus(true,'Syncing...');
-  if(fbReady){ syncCycle(false).catch(function(){}); return; }
+function ensureFbReady(){
+  if(fbReady) return;
   fbReady = true;
   fbLoadAuth();
-  syncCycle(true).catch(function(){});
   fbTimer = setInterval(function(){ syncCycle(false).catch(function(){}); }, 20000);
   window.addEventListener('online', function(){ syncCycle(false).catch(function(){}); });
   window.addEventListener('focus', function(){ syncCycle(false).catch(function(){}); });
   document.addEventListener('visibilitychange', function(){ if(!document.hidden){ syncCycle(false).catch(function(){}); } });
+}
+function initFirebase(){
+  setSyncStatus(true,'Syncing...');
+  ensureFbReady();
+  syncCycle(true).catch(function(){});
 }
 function startDatabaseSync(){ initFirebase(); }
 
@@ -803,7 +827,7 @@ function syncCycle(force){
 function forceSyncNow(){
   if(!settings.syncEnabled){ settings.syncEnabled = true; saveSettingsToStorage(); renderSettingsUI(); }
   setSyncStatus(true,'Syncing...');
-  if(!fbReady){ initFirebase(); alert('Sync started. Watch the status at the bottom right - it will say Synced when finished.'); return; }
+  ensureFbReady();
   syncCycle(true).then(function(ran){
     if(ran === false){ alert('A sync is already running. Please wait a few seconds and press Sync Now again.'); return; }
     alert('Sync complete. This device now has '+messages.length+' message(s). If the other device still looks different, press Sync Now there too.');
