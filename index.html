@@ -420,6 +420,7 @@ textarea{resize:vertical;}
         </div>
       </div>
       <div class="btnRow">
+        <button class="save" onclick="forceSyncNow()">Sync Now</button>
         <button class="save" style="background:var(--blue2)" onclick="exportAll()">Export All (Backup)</button>
         <button class="clear" onclick="document.getElementById('importFile2').click()">Import Backup</button>
         <input type="file" id="importFile2" accept=".json" class="hidden" onchange="importMessages(event)">
@@ -495,6 +496,7 @@ var SS_PASTOR_KEY = 'mdw_pastor_session';
 function initApp(){
   loadSettings();
   loadMessages();
+  reconcileSeedIds();
   seedIfEmpty();
   populateVersionSelects();
   applyContactSettingsToUI();
@@ -726,6 +728,24 @@ function startDatabaseSync(){
     setSyncStatus(false,'Sync error');
   });
 }
+function forceSyncNow(){
+  if(!settings.syncEnabled){ settings.syncEnabled = true; saveSettingsToStorage(); }
+  setSyncStatus(true,'Syncing...');
+  if(!fbReady){ initFirebase(); return; }
+  fbDb.ref('myDailyWords/messages').once('value').then(function(snap){
+    var remote = snap.val() || {};
+    mergeRemoteMessages(remote);
+    pushMissingLocalMessages(remote);
+    settings.lastSynced = Date.now();
+    saveSettingsToStorage();
+    setSyncStatus(true,'Synced');
+    renderSettingsUI();
+    alert('Sync complete. This device now has '+messages.length+' message(s). If the other device still looks different, open Settings there too and press Sync Now.');
+  }).catch(function(err){
+    setSyncStatus(false,'Sync blocked - check Firebase rules');
+    alert('Could not reach the sync database. This usually means the Firebase project\u2019s security rules are blocking access. Check the Realtime Database rules for my-daily-words-9060a in the Firebase console.');
+  });
+}
 function pushMissingLocalMessages(remoteObj){
   for(var i=0;i<messages.length;i++){
     if(!remoteObj[messages[i].id]){ pushToFirebase(messages[i]); }
@@ -754,11 +774,23 @@ function mergeRemoteMessages(remoteObj){
 }
 function pushToFirebase(msg){
   if(!settings.syncEnabled || !fbReady || !fbDb) return;
-  try{ fbDb.ref('myDailyWords/messages/'+msg.id).set(msg); }catch(e){}
+  try{
+    fbDb.ref('myDailyWords/messages/'+msg.id).set(msg).catch(function(err){
+      setSyncStatus(false, 'Sync blocked - check Firebase rules');
+    });
+  }catch(e){
+    setSyncStatus(false, 'Sync blocked - check Firebase rules');
+  }
 }
 function deleteFromFirebase(id){
   if(!settings.syncEnabled || !fbReady || !fbDb) return;
-  try{ fbDb.ref('myDailyWords/messages/'+id).remove(); }catch(e){}
+  try{
+    fbDb.ref('myDailyWords/messages/'+id).remove().catch(function(err){
+      setSyncStatus(false, 'Sync blocked - check Firebase rules');
+    });
+  }catch(e){
+    setSyncStatus(false, 'Sync blocked - check Firebase rules');
+  }
 }
 
 /* ---------------- MESSAGE STORAGE ---------------- */
@@ -813,6 +845,34 @@ function getFullSeedLibrary(){
 function seedIfEmpty(){
   if(messages.length>0) return;
   loadFullSeedLibrary(false);
+}
+
+/* One-time repair, safe to run on every load: earlier versions of this app
+   gave each of the 27 starter topics a random, time-based id, generated
+   separately on every device. That is the reason two devices could both
+   have (say) "Iam A King" yet Firebase treated them as two unrelated
+   messages instead of the same one, so each device kept showing whatever
+   it had loaded first instead of a single, shared, synced library.
+   This gives any starter topic still using an old-style id a fixed id
+   based on its own title and date (matching how fresh installs are
+   seeded now), WITHOUT touching its date, its wording, or any edit a
+   pastor has made to it - nothing is deleted, renamed, or overwritten. */
+function reconcileSeedIds(){
+  var seed = getFullSeedLibrary();
+  var canonicalFocus = {};
+  for(var s=0;s<seed.length;s++){ canonicalFocus[String(seed[s].focus||'').trim().toLowerCase()] = true; }
+  var changed = false;
+  var seenIds = {};
+  for(var i=0;i<messages.length;i++){
+    var m = messages[i];
+    var key = String(m.focus||'').trim().toLowerCase();
+    if(canonicalFocus[key] && String(m.id||'').indexOf('seed_')!==0){
+      var wantId = 'seed_' + m.date + '_' + slug(m.focus);
+      if(!seenIds[wantId]){ m.id = wantId; changed = true; }
+    }
+    seenIds[m.id] = true;
+  }
+  if(changed){ saveMessagesToStorage(); }
 }
 
 /* Loads the 27-topic starter library (6 original + 21 "Christ Is My Identity" topics).
@@ -1372,6 +1432,12 @@ function buildGeminiPrompt(topic, instructions){
   p += 'The voice must be first-person self-declaration, as if the reader is speaking truth to themselves ';
   p += '("I am...", "I have...", "I refuse...") - never second-person ("you are"), never addressed to someone else. ';
   p += 'The topic/identity-truth for this entry is: "' + topic + '". ';
+  p += 'Write in SIMPLE, EASY ENGLISH so a reader with only basic schooling can understand it fully on the first read. ';
+  p += 'Use short sentences (mostly under 15 words). Use everyday, common words. ';
+  p += 'Avoid big theological or academic words (e.g. do not use words like "propitiation", "sanctification", "eschatology", "efficacious", "vicariously", "manifold", "consecrated") - ';
+  p += 'say the same true thing in plain words instead (e.g. "made right with God" instead of "justified", "set apart for God" instead of "sanctified"). ';
+  p += 'Avoid long, complicated sentences with many commas; break them into two or three short sentences instead. ';
+  p += 'Keep the meaning rich and biblically accurate - simple words, not a simple or shallow message. ';
   if(instructions){ p += 'Additional instructions: ' + instructions + ' '; }
   p += 'Respond with ONLY a single valid JSON object, no markdown, no code fences, no commentary, ';
   p += 'with exactly these keys (all string values): ';
