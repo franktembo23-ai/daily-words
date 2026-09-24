@@ -483,7 +483,7 @@ var settings = {
   telegram: '0972619148',
   defaultVersion: 'KJV',
   apiKey: '',
-  syncEnabled: false,
+  syncEnabled: true,
   lastSynced: null
 };
 var currentEditId = null;
@@ -705,10 +705,19 @@ function startDatabaseSync(){
   fbDb = firebase.database();
   fbReady = true;
   setSyncStatus(true,'Syncing...');
+  var firstSnapshot = true;
   var ref = fbDb.ref('myDailyWords/messages');
   ref.on('value', function(snap){
     var remote = snap.val() || {};
     mergeRemoteMessages(remote);
+    if(firstSnapshot){
+      firstSnapshot = false;
+      // Two-way catch-up: anything already on THIS device (e.g. content
+      // created or edited while sync was off, or before this fix) that the
+      // cloud copy does not have yet gets pushed up now, so every other
+      // device eventually receives it too instead of it staying stuck here.
+      pushMissingLocalMessages(remote);
+    }
     settings.lastSynced = Date.now();
     saveSettingsToStorage();
     setSyncStatus(true,'Synced');
@@ -716,6 +725,11 @@ function startDatabaseSync(){
   }, function(err){
     setSyncStatus(false,'Sync error');
   });
+}
+function pushMissingLocalMessages(remoteObj){
+  for(var i=0;i<messages.length;i++){
+    if(!remoteObj[messages[i].id]){ pushToFirebase(messages[i]); }
+  }
 }
 function setSyncStatus(on,label){
   var dot = document.getElementById('syncDot');
@@ -844,7 +858,10 @@ function loadFullSeedLibrary(skipExisting){
       dailyWords:obj.dailyWords, prayerPoint:obj.prayerPoint, speakWords:obj.speakWords,
       callForth:obj.callForth, grace:obj.grace, whatDoISee:obj.whatDoISee, thankGod:obj.thankGod
     };
-    newObj.id = newId();
+    // Fixed, content-based id (not time/random) so the same starter topic
+    // seeded independently on different devices is treated as the SAME
+    // record once sync connects, instead of showing up twice.
+    newObj.id = 'seed_' + dateStr + '_' + slug(obj.focus);
     newObj.date = dateStr;
     newObj.status = 'scheduled';
     newObj.createdAt = Date.now()+i;
