@@ -464,7 +464,7 @@ var BIBLE_VERSIONS = ['KJV','NKJV','NIV','NLT','AMPLIFIED','ERV','ESV','CHINYANJ
 var firebaseConfig = {
   apiKey: "AIzaSyBRMF1DwCNxZRFpSrQZ3nZm88eSVpEae1Q",
   authDomain: "my-daily-words-9060a.firebaseapp.com",
-  databaseURL: "https://my-daily-words-9060a-default-rtdb.firebaseio.com",
+  databaseURL: "https://my-daily-words-9060a-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "my-daily-words-9060a",
   storageBucket: "my-daily-words-9060a.firebasestorage.app",
   messagingSenderId: "313368077074",
@@ -687,7 +687,13 @@ function populateVersionSelects(){
    This uses plain HTTPS requests instead (same database, same rules, same
    anonymous sign-in), with short time-outs and automatic retry, so it
    either syncs quickly or says clearly why it cannot. */
-var FB_DB = firebaseConfig.databaseURL;
+var FB_DB = (function(){
+  try{
+    var saved = localStorage.getItem('mdw_fb_db_url_fix');
+    if(saved && saved.indexOf('firebasedatabase.app')>-1) return saved;
+  }catch(e){}
+  return firebaseConfig.databaseURL;
+})();
 var LS_FB_AUTH = 'mdw_fb_auth_v1';
 var fbToken = '', fbTokenExp = 0, fbRefreshToken = '';
 var fbBusy = false, fbLastMeta = null, fbFullDone = false, fbDirty = false, fbTimer = null;
@@ -756,6 +762,30 @@ function fbReq(method, path, body, retried){
     if(r.status === 401 && !retried){ fbToken = ''; fbTokenExp = 0; return fbReq(method, path, body, true); }
     if(!r.ok){
       return r.text().then(function(t){
+        // Auto-fix for wrong region: Firebase returns {correctUrl: "https://...europe-west1.firebasedatabase.app"}
+        try{
+          var j = JSON.parse(t||'{}');
+          var cu = j.correctUrl || j.correctURL;
+          if(r.status===404 && cu && cu !== FB_DB){
+            try{ localStorage.setItem('mdw_fb_db_url_fix', cu); }catch(ex){}
+            FB_DB = cu;
+            firebaseConfig.databaseURL = cu;
+            // Retry once with corrected URL
+            if(!retried){
+              var opts2 = {method: method};
+              if(body !== undefined){ opts2.headers = {'Content-Type':'application/json'}; opts2.body = JSON.stringify(body); }
+              return fbFetch(FB_DB + '/' + path + '.json?auth=' + encodeURIComponent(fbToken), opts2, 20000).then(function(r2){
+                if(!r2.ok){
+                  return r2.text().then(function(t2){
+                    var e2 = new Error('HTTP '+r2.status+(t2 ? ': '+t2.slice(0,200) : ''));
+                    e2.status = r2.status; e2.body = t2; throw e2;
+                  }, function(){ var e2 = new Error('HTTP '+r2.status); e2.status = r2.status; throw e2; });
+                }
+                return r2.json();
+              });
+            }
+          }
+        }catch(parseErr){}
         var e = new Error('HTTP '+r.status+(t ? ': '+t.slice(0,200) : ''));
         e.status = r.status; e.body = t; throw e;
       }, function(){ var e = new Error('HTTP '+r.status); e.status = r.status; throw e; });
@@ -775,7 +805,7 @@ function fbErrText(e){
   var detail = 'Details: ' + (e && e.message ? e.message : String(e)) + '.';
   if(e && e.auth){ return 'Firebase refused the anonymous sign-in. In the Firebase console open Authentication > Sign-in method, and make sure "Anonymous" is enabled. '+detail; }
   if(e && e.status === 401){ return 'Firebase rejected the request. Check the Realtime Database rules for my-daily-words-9060a. '+detail; }
-  if(e && e.status === 404){ return 'The database address the app is using does not match this Firebase project. In the Firebase console open Realtime Database and compare its URL to the one built into the app (https://my-daily-words-9060a-default-rtdb.firebaseio.com). '+detail; }
+  if(e && e.status === 404){ return 'The database address the app is using does not match this Firebase project. In the Firebase console open Realtime Database and compare its URL to the one built into the app (https://my-daily-words-9060a-default-rtdb.europe-west1.firebasedatabase.app). '+detail; }
   if(e && e.status){ return 'Firebase returned an error. '+detail; }
   if(e && e.network){ return 'The request to Firebase could not connect at all - this points to a firewall, VPN, DNS setting, or a browser/ad-block extension blocking google APIs on this device or network, not a Firebase setting. Try a different network (e.g. mobile data) or a different browser to confirm. '+detail; }
   if(e && e.timeout){ return 'The request to Firebase took too long and was cancelled. The connection may be slow or intermittent right now. '+detail; }
